@@ -3,1060 +3,1112 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>NEURON — The Brain Board Game</title>
+<title>NEURON — Build the Path</title>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
 body {
   background: #020208;
-  min-height: 100vh;
+  min-height: 100dvh;
   font-family: 'Courier New', Courier, monospace;
   overflow: hidden;
   color: #e0e0f0;
   user-select: none;
-  touch-action: none;
+  display: flex;
+  flex-direction: column;
 }
-canvas { display: block; position: fixed; inset: 0; }
+
+/* ── CANVAS (background + AP animation) ── */
+#bgCvs {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 0;
+}
 
 /* ── TOP BAR ── */
 #topbar {
-  position: fixed; top:0; left:0; right:0; height:52px;
-  background: linear-gradient(180deg,rgba(2,2,10,.97) 60%,transparent);
+  position: relative; z-index: 10;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 16px; z-index: 20; pointer-events: none;
+  padding: 10px 14px 8px;
+  background: rgba(2,2,10,.97);
+  border-bottom: 1px solid rgba(79,195,247,.07);
+  flex-shrink: 0;
 }
-#gameTitle { font-size:18px; letter-spacing:4px; color:#4FC3F7; text-shadow: 0 0 14px rgba(79,195,247,.5); }
-#scoreBox  { text-align:center; }
-#scoreLbl  { font-size:9px; color:#37474F; letter-spacing:2px; }
-#scoreVal  { font-size:20px; font-weight:bold; color:#FFD700; text-shadow: 0 0 8px rgba(255,215,0,.5); }
-#squareLbl { font-size:11px; color:#546E7A; text-align:right; }
-#squareNum { font-size:16px; color:#90CAF9; text-align:right; font-weight:bold; }
+#lvlTag  { font-size:10px; letter-spacing:3px; color:#37474F; }
+#lvlName { font-size:15px; color:#90CAF9; font-weight:bold; margin-top:1px; }
+#scoreBox { text-align:center; }
+#scoreLbl { font-size:9px; color:#37474F; letter-spacing:2px; }
+#scoreVal { font-size:20px; font-weight:bold; color:#FFD700; text-shadow:0 0 8px rgba(255,215,0,.4); }
+#timerCol { text-align:right; min-width:56px; }
+#timerBar { height:3px; background:rgba(79,195,247,.08); border-radius:2px; margin-top:3px; }
+#timerFill{ height:100%; background:linear-gradient(90deg,#2ECC71,#F39C12,#E74C3C); border-radius:2px; transition:width .2s linear; }
+#timerVal { font-size:12px; color:#546E7A; text-align:right; }
 
-/* ── BOTTOM CONTROLS ── */
-#controls {
-  position: fixed; bottom:0; left:0; right:0;
-  padding: 12px 16px 16px;
-  background: linear-gradient(0deg,rgba(2,2,10,.98) 60%,transparent);
-  display: flex; align-items: center; justify-content: space-between; gap:12px;
-  z-index: 20;
-}
-#infoBox {
-  flex: 1;
-  font-size: 12px; color: #546E7A; line-height: 1.5;
-  max-width: 55%;
-}
-#diceArea { display:flex; align-items:center; gap:10px; }
-#dice {
-  width:56px; height:56px;
-  border-radius:12px;
-  background: rgba(79,195,247,.1);
-  border: 2px solid rgba(79,195,247,.3);
-  display: flex; align-items:center; justify-content:center;
-  font-size: 26px;
-  cursor: pointer;
-  transition: transform .15s, box-shadow .15s;
-  pointer-events: all;
-  color: #4FC3F7;
-  text-shadow: 0 0 8px rgba(79,195,247,.6);
-}
-#dice:hover:not(.disabled) { transform:scale(1.1); box-shadow: 0 0 18px rgba(79,195,247,.4); }
-#dice.disabled { opacity:.4; cursor:not-allowed; pointer-events:none; }
-#dice.rolling  { animation: diceRoll .4s ease-in-out; }
-@keyframes diceRoll { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-20deg) scale(1.15)} 75%{transform:rotate(20deg) scale(1.15)} }
-#rollBtn {
-  background: rgba(46,204,113,.12);
-  border: 2px solid #2ECC71;
-  color: #2ECC71;
-  padding: 12px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: bold;
-  letter-spacing: 1px;
-  pointer-events: all;
-  white-space: nowrap;
-  transition: all .2s;
-}
-#rollBtn:hover:not(:disabled) { background:rgba(46,204,113,.25); box-shadow:0 0 16px rgba(46,204,113,.4); }
-#rollBtn:disabled { opacity:.35; cursor:not-allowed; }
+/* ── PROGRESS DOTS ── */
+#progRow { display:flex; gap:5px; align-items:center; margin-top:3px; }
+.pdot { width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,.08); transition:background .3s; }
+.pdot.done    { background:#2ECC71; }
+.pdot.current { background:#4FC3F7; box-shadow:0 0 6px #4FC3F7; }
 
-/* ── QUIZ / EVENT OVERLAY ── */
-#overlay {
-  position: fixed; inset:0;
-  display: flex; align-items:flex-end; justify-content:center;
-  z-index: 50; pointer-events: none;
-  padding-bottom: 0;
+/* ── MAIN CONTENT ── */
+#main {
+  flex: 1; display:flex; flex-direction:column;
+  overflow: hidden; position:relative; z-index:5;
+  padding: 10px 12px 0;
+  gap: 8px;
 }
-#card {
-  background: linear-gradient(160deg,rgba(8,8,28,.99),rgba(4,4,18,.99));
-  border: 1px solid rgba(100,181,246,.25);
-  border-bottom: none;
-  border-radius: 18px 18px 0 0;
-  padding: 24px 24px 28px;
-  width: 100%; max-width: 560px;
-  pointer-events: all;
-  transform: translateY(100%);
-  transition: transform .35s cubic-bezier(.34,1.4,.64,1);
-  box-shadow: 0 -8px 40px rgba(0,0,0,.6);
-}
-#card.open { transform: translateY(0); }
-#cardIcon  { font-size:32px; margin-bottom:8px; }
-#cardTitle { font-size:17px; color:#4FC3F7; margin-bottom:8px; font-weight:bold; }
-#cardBody  { font-size:13px; color:#78909C; line-height:1.7; margin-bottom:16px; }
-#cardBtns  { display:flex; gap:8px; flex-wrap:wrap; }
-.ans-btn {
-  flex: 1; min-width: 130px;
-  padding: 12px 8px;
-  border-radius: 8px;
-  border: 1px solid rgba(79,195,247,.3);
-  background: rgba(79,195,247,.08);
-  color: #4FC3F7;
-  font-family: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all .18s;
+
+/* ── CONTEXT CLUE ── */
+#contextClue {
   text-align: center;
-  line-height: 1.3;
+  padding: 8px 14px;
+  background: rgba(79,195,247,.04);
+  border: 1px solid rgba(79,195,247,.08);
+  border-radius: 8px;
+  font-size: 12px; color:#546E7A; line-height:1.5;
+  flex-shrink: 0;
 }
-.ans-btn:hover { background:rgba(79,195,247,.2); box-shadow:0 0 12px rgba(79,195,247,.3); }
-.ans-btn.correct { background:rgba(46,204,113,.25)!important; border-color:#2ECC71!important; color:#2ECC71!important; box-shadow:0 0 16px rgba(46,204,113,.4); }
-.ans-btn.wrong   { background:rgba(239,83,80,.2)!important;  border-color:#EF5350!important; color:#EF5350!important; }
-.ans-btn.dim     { opacity:.35; pointer-events:none; }
-.cont-btn {
-  width:100%; padding:12px;
-  border-radius:8px; border:1px solid rgba(79,195,247,.3);
-  background:rgba(79,195,247,.1); color:#4FC3F7;
-  font-family:inherit; font-size:13px; cursor:pointer;
-  margin-top:10px; transition:all .18s; letter-spacing:1px;
-}
-.cont-btn:hover { background:rgba(79,195,247,.22); }
+#contextClue strong { color:#64B5F6; }
+#contextClue em { color:#90CAF9; font-style:normal; }
 
-/* ── MENU OVERLAY ── */
+/* ── LEGEND (one-time) ── */
+#legend {
+  display:flex; gap:10px; justify-content:center; align-items:center;
+  flex-wrap:wrap; flex-shrink:0;
+}
+.leg { display:flex; align-items:center; gap:5px; font-size:10px; color:#37474F; }
+.leg-badge { padding:2px 7px; border-radius:12px; font-size:10px; font-weight:bold; }
+.leg-badge.rel { background:rgba(255,215,0,.15); border:1px solid #FFD700; color:#FFD700; }
+.leg-badge.acc { background:transparent; border:1px dashed #80DEEA; color:#80DEEA; }
+
+/* ── PATH AREA ── */
+#pathWrap {
+  flex-shrink: 0;
+  overflow-x: auto;
+  padding: 4px 0 8px;
+  /* hide scrollbar but allow scroll */
+  -ms-overflow-style: none; scrollbar-width: none;
+}
+#pathWrap::-webkit-scrollbar { display:none; }
+
+#pathRow {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0;
+  min-width: max-content;
+  margin: 0 auto;
+  padding: 0 8px;
+}
+
+/* ── SLOT ── */
+.slot {
+  position: relative;
+  border: 2px dashed rgba(79,195,247,.25);
+  border-radius: 12px;
+  background: rgba(5,5,20,.8);
+  transition: border-color .2s, box-shadow .2s, transform .15s;
+  cursor: pointer;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.slot:hover { border-color: rgba(79,195,247,.5); }
+.slot.drop-target { border-color: #4FC3F7; box-shadow: 0 0 16px rgba(79,195,247,.4); transform:scale(1.03); }
+.slot.filled  { border-style: solid; border-color: rgba(79,195,247,.35); }
+.slot.correct { border-color: rgba(46,204,113,.6)!important; box-shadow: 0 0 12px rgba(46,204,113,.3)!important; }
+.slot.wrong   { border-color: rgba(239,83,80,.7)!important; box-shadow: 0 0 14px rgba(239,83,80,.4)!important; animation: shake .35s ease; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
+.slot-hint { position:absolute; top:4px; left:0; right:0; text-align:center; font-size:9px; color:rgba(255,255,255,.2); letter-spacing:1px; pointer-events:none; }
+.slot-num  { position:absolute; bottom:4px; right:6px; font-size:9px; color:rgba(255,255,255,.12); pointer-events:none; }
+.slot-empty-icon { display:flex; align-items:center; justify-content:center; height:100%; opacity:.2; font-size:22px; }
+
+/* ── CONNECTOR ── */
+.conn {
+  display: flex; flex-direction:column; align-items:center; justify-content:center;
+  width: 48px; flex-shrink:0; gap: 2px;
+}
+.conn-arrow { font-size:16px; color:rgba(255,255,255,.15); transition: color .3s; }
+.conn-nt { font-size:9px; font-weight:bold; letter-spacing:1px; color:rgba(255,255,255,.15); transition:color .3s; white-space:nowrap; }
+.conn.valid   .conn-arrow, .conn.valid   .conn-nt { color:#2ECC71; text-shadow:0 0 8px rgba(46,204,113,.7); }
+.conn.invalid .conn-arrow, .conn.invalid .conn-nt { color:#EF5350; text-shadow:0 0 6px rgba(239,83,80,.7); }
+.conn-check { font-size:12px; transition:opacity .3s; opacity:0; }
+.conn.valid   .conn-check { opacity:1; color:#2ECC71; }
+.conn.invalid .conn-check { opacity:1; color:#EF5350; }
+
+/* ── NEURON TILE (in slot AND in bank) ── */
+.tile {
+  display: flex; flex-direction:column; gap:4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s, opacity .25s;
+  position: relative;
+  border: 1.5px solid transparent;
+  flex-shrink: 0;
+}
+.tile:hover { transform: translateY(-3px); }
+.tile.selected {
+  transform: translateY(-5px) scale(1.04);
+  box-shadow: 0 0 0 2px white, 0 0 20px rgba(255,255,255,.4) !important;
+}
+.tile.in-slot { border: none; margin:0; padding:8px; border-radius:10px; width:100%; height:100%; }
+.tile.dimmed  { opacity:.35; pointer-events:none; }
+
+.tile-type { font-size:9px; letter-spacing:2px; text-transform:uppercase; opacity:.8; }
+.tile-name { font-size:13px; font-weight:bold; line-height:1.25; }
+.tile-sub  { font-size:10px; opacity:.55; margin-top:-2px; }
+.tile-nts  { display:flex; gap:4px; margin-top:4px; flex-wrap:wrap; }
+
+.badge {
+  padding: 2px 7px; border-radius:10px; font-size:10px; font-weight:bold;
+  white-space:nowrap;
+}
+.badge.rel { /* filled */ }
+.badge.acc { background:transparent !important; border-style:dashed !important; }
+.badge small { font-size:8px; font-weight:normal; opacity:.7; }
+
+/* ── BANK ── */
+#bankWrap {
+  flex: 1; display:flex; flex-direction:column;
+  overflow: hidden; min-height: 0;
+}
+#bankLbl {
+  font-size:10px; color:#37474F; letter-spacing:2px;
+  padding: 4px 2px; flex-shrink:0;
+  display:flex; align-items:center; gap:8px;
+}
+#bankLbl span { flex:1; }
+#bankTiles {
+  flex:1; overflow-y:auto;
+  display:flex; flex-wrap:wrap;
+  align-content: flex-start;
+  gap:8px;
+  padding: 4px 2px 8px;
+  -ms-overflow-style: none; scrollbar-width: none;
+}
+#bankTiles::-webkit-scrollbar { display:none; }
+
+/* ── FIRE BAR ── */
+#fireBar {
+  position:relative; z-index:10;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:10px;
+  padding: 10px 12px 14px;
+  background: rgba(2,2,10,.95);
+  border-top:1px solid rgba(255,255,255,.04);
+  flex-shrink:0;
+}
+#fireStatus { font-size:12px; color:#37474F; flex:1; line-height:1.4; }
+#fireBtn {
+  background: rgba(46,204,113,.12);
+  border:2px solid rgba(46,204,113,.35);
+  color:rgba(46,204,113,.4);
+  padding:11px 22px; border-radius:8px;
+  cursor:not-allowed; font-family:inherit; font-size:14px;
+  font-weight:bold; letter-spacing:2px; transition:all .25s;
+  white-space:nowrap; flex-shrink:0;
+}
+#fireBtn.ready {
+  border-color:#2ECC71; color:#2ECC71; cursor:pointer;
+  animation:firePulse 1.3s ease-in-out infinite;
+}
+@keyframes firePulse { 0%,100%{box-shadow:0 0 6px rgba(46,204,113,.3)} 50%{box-shadow:0 0 20px rgba(46,204,113,.8),0 0 40px rgba(46,204,113,.2)} }
+
+/* ── BOTTOM SHEET OVERLAY ── */
+#sheet {
+  position:fixed; inset:0; z-index:40;
+  display:flex; align-items:flex-end; justify-content:center;
+  background:rgba(2,2,8,.6); backdrop-filter:blur(3px);
+  opacity:0; pointer-events:none; transition:opacity .25s;
+}
+#sheet.open { opacity:1; pointer-events:all; }
+#sheetCard {
+  background:linear-gradient(160deg,rgba(8,8,28,.99),rgba(4,4,18,.99));
+  border:1px solid rgba(100,181,246,.18); border-bottom:none;
+  border-radius:18px 18px 0 0;
+  padding:22px 20px 28px; width:100%; max-width:560px;
+  transform:translateY(100%); transition:transform .35s cubic-bezier(.34,1.3,.64,1);
+  box-shadow:0 -6px 36px rgba(0,0,0,.5);
+}
+#sheet.open #sheetCard { transform:translateY(0); }
+#sheetIcon  { font-size:28px; margin-bottom:6px; }
+#sheetTitle { font-size:17px; color:#4FC3F7; font-weight:bold; margin-bottom:8px; }
+#sheetBody  { font-size:13px; color:#78909C; line-height:1.75; margin-bottom:16px; }
+#sheetBtns  { display:flex; gap:8px; flex-wrap:wrap; }
+.sheet-btn {
+  flex:1; min-width:120px; padding:12px 10px; border-radius:8px;
+  border:1px solid rgba(79,195,247,.3); background:rgba(79,195,247,.08);
+  color:#4FC3F7; font-family:inherit; font-size:13px; cursor:pointer;
+  text-align:center; transition:all .18s; line-height:1.3;
+}
+.sheet-btn:hover { background:rgba(79,195,247,.2); box-shadow:0 0 12px rgba(79,195,247,.3); }
+.sheet-btn.green { border-color:rgba(46,204,113,.4); background:rgba(46,204,113,.1); color:#2ECC71; }
+.sheet-btn.green:hover { background:rgba(46,204,113,.22); }
+
+/* ── MENU ── */
 #menu {
-  position: fixed; inset:0;
+  position:fixed; inset:0; z-index:60;
   display:flex; align-items:center; justify-content:center;
-  background: rgba(2,2,10,.88); backdrop-filter:blur(5px);
-  z-index: 60;
+  background:rgba(2,2,10,.9); backdrop-filter:blur(5px);
 }
 #menuCard {
-  background: linear-gradient(160deg,rgba(10,10,30,.98),rgba(5,5,20,.98));
-  border: 1px solid rgba(100,181,246,.2);
-  border-radius:16px;
-  padding: 36px 40px;
-  text-align:center; max-width:500px; width:90%;
-  box-shadow: 0 0 60px rgba(100,181,246,.08);
+  background:linear-gradient(160deg,rgba(10,10,30,.99),rgba(5,5,20,.99));
+  border:1px solid rgba(100,181,246,.2); border-radius:16px;
+  padding:30px 28px; text-align:center; max-width:460px; width:92%;
+  box-shadow:0 0 60px rgba(100,181,246,.07);
 }
-#menuCard h1 { font-size:28px; letter-spacing:5px; color:#4FC3F7; text-shadow:0 0 20px rgba(79,195,247,.6); margin-bottom:4px; }
-#menuCard .sub { font-size:11px; letter-spacing:3px; color:#37474F; margin-bottom:20px; }
-#menuCard p { font-size:13px; color:#78909C; line-height:1.75; margin-bottom:20px; }
-.legend { display:flex; flex-direction:column; gap:8px; margin-bottom:22px; text-align:left; }
-.leg-row { display:flex; align-items:center; gap:10px; font-size:12px; color:#90A4AE; }
-.leg-icon { font-size:20px; width:28px; text-align:center; }
+#menuCard h1 { font-size:26px; letter-spacing:5px; color:#4FC3F7; text-shadow:0 0 18px rgba(79,195,247,.5); margin-bottom:3px; }
+#menuCard .sub { font-size:10px; letter-spacing:3px; color:#37474F; margin-bottom:18px; }
+#menuCard p   { font-size:13px; color:#78909C; line-height:1.7; margin-bottom:18px; }
+.howto { background:rgba(79,195,247,.04); border:1px solid rgba(79,195,247,.08); border-radius:10px; padding:14px 16px; margin-bottom:18px; text-align:left; }
+.howto-row { display:flex; align-items:flex-start; gap:10px; margin-bottom:10px; font-size:12px; color:#90A4AE; line-height:1.4; }
+.howto-row:last-child { margin-bottom:0; }
+.hico { font-size:18px; flex-shrink:0; width:24px; text-align:center; }
 .start-btn {
-  background:rgba(46,204,113,.12); border:2px solid #2ECC71;
-  color:#2ECC71; padding:13px 36px; border-radius:8px;
-  cursor:pointer; font-family:inherit; font-size:15px; font-weight:bold;
-  letter-spacing:2px; transition:all .2s;
-  animation: glowPulse 1.5s ease-in-out infinite;
-}
-@keyframes glowPulse {
-  0%,100%{box-shadow:0 0 8px rgba(46,204,113,.3)}
-  50%{box-shadow:0 0 22px rgba(46,204,113,.7),0 0 40px rgba(46,204,113,.2)}
+  background:rgba(46,204,113,.12); border:2px solid #2ECC71; color:#2ECC71;
+  padding:13px 34px; border-radius:8px; cursor:pointer; font-family:inherit;
+  font-size:15px; font-weight:bold; letter-spacing:2px; transition:all .2s;
+  animation:firePulse 1.5s ease-in-out infinite;
 }
 .start-btn:hover { background:rgba(46,204,113,.25); }
 
-/* feedback floaties */
-.fb { position:fixed; pointer-events:none; font-weight:bold; font-size:17px; z-index:100;
-      animation: floatUp 1.2s ease-out forwards; }
-@keyframes floatUp { 0%{opacity:1;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-60px) scale(1.15)} }
-
-/* ── WIN SCREEN ── */
-#winScreen {
-  position:fixed; inset:0;
-  display:none; align-items:center; justify-content:center;
-  background:rgba(2,2,10,.92); backdrop-filter:blur(6px); z-index:70;
-}
-#winCard {
-  background:linear-gradient(160deg,rgba(10,10,30,.99),rgba(5,5,20,.99));
-  border:1px solid rgba(255,215,0,.3); border-radius:16px;
-  padding:36px 40px; text-align:center; max-width:460px; width:90%;
-  box-shadow:0 0 60px rgba(255,215,0,.12);
-}
-#winCard h2 { font-size:26px; color:#FFD700; letter-spacing:3px; text-shadow:0 0 20px rgba(255,215,0,.5); margin-bottom:10px; }
-#winCard p  { font-size:13px; color:#78909C; line-height:1.7; margin-bottom:18px; }
-#winScore   { font-size:30px; color:#FFD700; font-weight:bold; margin-bottom:12px; text-shadow:0 0 12px rgba(255,215,0,.5); }
+/* Feedback floaties */
+.fb { position:fixed; pointer-events:none; font-weight:bold; font-size:16px; z-index:100;
+      transform:translateX(-50%); animation:floatUp 1.1s ease-out forwards; }
+@keyframes floatUp { 0%{opacity:1;transform:translateX(-50%) translateY(0)} 100%{opacity:0;transform:translateX(-50%) translateY(-55px)} }
 </style>
 </head>
 <body>
-<canvas id="c"></canvas>
+
+<canvas id="bgCvs"></canvas>
 
 <div id="topbar">
   <div>
-    <div id="gameTitle">NEURON</div>
-    <div style="font-size:9px;color:#37474F;letter-spacing:2px;">BRAIN BOARD GAME</div>
+    <div id="lvlTag">LEVEL 1 OF 8</div>
+    <div id="lvlName">Knee-Jerk Reflex</div>
   </div>
   <div id="scoreBox">
     <div id="scoreLbl">SCORE</div>
     <div id="scoreVal">0</div>
   </div>
-  <div>
-    <div id="squareLbl">SQUARE</div>
-    <div id="squareNum">1 / 36</div>
+  <div id="timerCol">
+    <div id="timerVal">0:45</div>
+    <div id="progRow"></div>
+    <div id="timerBar"><div id="timerFill" style="width:100%"></div></div>
   </div>
 </div>
 
-<div id="controls">
-  <div id="infoBox">Click ROLL to fire your action potential!</div>
-  <div id="diceArea">
-    <div id="dice">⚡</div>
-    <button id="rollBtn" onclick="rollDice()">ROLL</button>
+<div id="main">
+  <div id="legend">
+    <div class="leg"><span class="leg-badge rel">Glu ▲</span><span>= what it releases</span></div>
+    <div class="leg"><span style="margin:0 4px;color:#546E7A">→ match → </span></div>
+    <div class="leg"><span class="leg-badge acc">Glu ▼</span><span>= what it accepts</span></div>
+  </div>
+  <div id="contextClue"></div>
+  <div id="pathWrap"><div id="pathRow"></div></div>
+  <div id="bankWrap">
+    <div id="bankLbl"><span>NEURON BANK — tap to select, then tap a slot</span></div>
+    <div id="bankTiles"></div>
   </div>
 </div>
 
-<div id="overlay">
-  <div id="card">
-    <div id="cardIcon">🧠</div>
-    <div id="cardTitle"></div>
-    <div id="cardBody"></div>
-    <div id="cardBtns"></div>
+<div id="fireBar">
+  <div id="fireStatus">Place all neurons to build the pathway</div>
+  <button id="fireBtn" onclick="fire()">⚡ FIRE!</button>
+</div>
+
+<!-- Bottom sheet -->
+<div id="sheet">
+  <div id="sheetCard">
+    <div id="sheetIcon">🧠</div>
+    <div id="sheetTitle"></div>
+    <div id="sheetBody"></div>
+    <div id="sheetBtns"></div>
   </div>
 </div>
 
+<!-- Menu -->
 <div id="menu">
   <div id="menuCard">
     <h1>NEURON</h1>
-    <div class="sub">THE BRAIN BOARD GAME</div>
-    <p>Race your action potential from a nerve ending all the way to the brain — and back to the muscles!</p>
-    <div class="legend">
-      <div class="leg-row"><span class="leg-icon">⚡</span><span>Roll the dice and move your signal forward</span></div>
-      <div class="leg-row"><span class="leg-icon" style="color:#4FC3F7">🔼</span><span><b style="color:#4FC3F7">Myelinated axons</b> — answer right to jump ahead!</span></div>
-      <div class="leg-row"><span class="leg-icon" style="color:#EF9A9A">🔽</span><span><b style="color:#EF9A9A">GABA inhibition</b> — get it wrong and slide back!</span></div>
-      <div class="leg-row"><span class="leg-icon" style="color:#FFC107">❓</span><span><b style="color:#FFC107">Quiz squares</b> — fun brain questions for bonus points</span></div>
-      <div class="leg-row"><span class="leg-icon" style="color:#CE93D8">✨</span><span><b style="color:#CE93D8">Special squares</b> — surprises along the way</span></div>
+    <div class="sub">BUILD THE NEURAL PATHWAY</div>
+    <p>Arrange the neuron tiles in the correct order to build a real neural circuit — from sensory signal to brain response.</p>
+    <div class="howto">
+      <div class="howto-row"><span class="hico">1️⃣</span><span><b style="color:#90CAF9">Tap a neuron</b> in the bank below to pick it up</span></div>
+      <div class="howto-row"><span class="hico">2️⃣</span><span><b style="color:#90CAF9">Tap a slot</b> in the pathway to place it there</span></div>
+      <div class="howto-row"><span class="hico">🟡</span><span>Match the <b style="color:#FFD700">▲ release badge</b> of one tile to the <b style="color:#80DEEA">▼ accept badge</b> of the next</span></div>
+      <div class="howto-row"><span class="hico">⚡</span><span>When all slots are filled, hit <b style="color:#2ECC71">FIRE!</b> to send the action potential</span></div>
     </div>
     <button class="start-btn" onclick="startGame()">START GAME</button>
   </div>
 </div>
 
-<div id="winScreen">
-  <div id="winCard">
-    <h2>🧠 SIGNAL COMPLETE!</h2>
-    <p>Your action potential traveled the entire nervous system — from receptor to muscle. You've mastered the brain!</p>
-    <div id="winScore"></div>
-    <p style="font-size:11px;color:#37474F">Fun fact: This journey takes about 50–100 milliseconds in a real nervous system.</p>
-    <button class="start-btn" onclick="restartGame()" style="margin-top:12px">PLAY AGAIN</button>
-  </div>
-</div>
-
 <script>
 // ══════════════════════════════════════════════════════════════
-//  NEURON — The Brain Board Game
-//  Snakes & Ladders meets Neurophysiology
+//  NEURON — Build the Neural Pathway
 // ══════════════════════════════════════════════════════════════
 
-const cvs = document.getElementById('c');
-const ctx = cvs.getContext('2d');
-function resize() { cvs.width = innerWidth; cvs.height = innerHeight; }
-resize(); addEventListener('resize', () => { resize(); });
+// ── CANVAS BACKGROUND + AP ANIMATION ─────────────────────────
+const bgCvs = document.getElementById('bgCvs');
+const bgCtx = bgCvs.getContext('2d');
+function resizeCvs() { bgCvs.width=innerWidth; bgCvs.height=innerHeight; }
+resizeCvs(); addEventListener('resize', resizeCvs);
 
-const W = () => cvs.width, H = () => cvs.height;
-
-// ── BOARD CONFIG ──────────────────────────────────────────────
-const GRID = 6;
-const TOTAL = 36;
-
-function cellSize() {
-  const maxW = Math.floor((W() - 40) / GRID);
-  const maxH = Math.floor((H() - 160) / GRID);
-  return Math.min(maxW, maxH, 96);
-}
-function boardOrigin() {
-  const cs = cellSize();
-  return {
-    x: Math.floor((W() - cs * GRID) / 2),
-    y: Math.floor((H() - cs * GRID) / 2) - 16,
-  };
-}
-
-// Square n → grid pixel center
-function sqPos(n) {
-  if (n < 1)  n = 1;
-  if (n > TOTAL) n = TOTAL;
-  const cs = cellSize();
-  const { x: bx, y: by } = boardOrigin();
-  const idx  = n - 1;
-  const row  = Math.floor(idx / GRID);              // 0=bottom
-  const posR = idx % GRID;
-  const col  = (row % 2 === 0) ? posR : (GRID - 1 - posR);
-  return {
-    x: bx + col * cs + cs / 2,
-    y: by + (GRID - 1 - row) * cs + cs / 2,
-  };
-}
-
-// ── SQUARE TYPE DEFINITIONS ───────────────────────────────────
-// Types: 'normal' | 'ladder_base' | 'ladder_top' | 'snake_head' | 'snake_tail' | 'quiz' | 'special' | 'start' | 'finish'
-const SQUARE_TYPES = {};
-for (let i = 1; i <= TOTAL; i++) SQUARE_TYPES[i] = 'normal';
-SQUARE_TYPES[1]  = 'start';
-SQUARE_TYPES[36] = 'finish';
-
-// LADDERS: base → top  (good — fast conduction!)
-const LADDERS = [
-  { from: 4,  to: 14, label: 'Myelinated Axon!',     icon: '⚡', color: '#4FC3F7' },
-  { from: 9,  to: 22, label: 'Dopamine Surge!',       icon: '🎯', color: '#CE93D8' },
-  { from: 20, to: 31, label: "Long-Term Potentiation!", icon: '🔬', color: '#81C784' },
-];
-// SNAKES: head → tail  (bad — inhibition!)
-const SNAKES = [
-  { from: 17, to: 7,  label: 'GABA Flood!',           icon: '🔴', color: '#EF9A9A' },
-  { from: 28, to: 13, label: 'Refractory Period!',    icon: '⏸',  color: '#FF6B6B' },
-  { from: 33, to: 21, label: 'Opioid Inhibition!',    icon: '🚫', color: '#FF8A65' },
-];
-LADDERS.forEach(l => { SQUARE_TYPES[l.from] = 'ladder_base'; SQUARE_TYPES[l.to] = 'ladder_top'; });
-SNAKES.forEach(s  => { SQUARE_TYPES[s.from] = 'snake_head';  SQUARE_TYPES[s.to] = 'snake_tail'; });
-
-// QUIZ SQUARES
-const QUIZ_SQUARES = [6, 11, 15, 24, 27, 30, 34];
-QUIZ_SQUARES.forEach(q => SQUARE_TYPES[q] = 'quiz');
-
-// SPECIAL SQUARES
-const SPECIAL_SQUARES = {
-  3:  { icon:'☕', color:'#FFA040', label:'Caffeine Boost!',   effect:'roll_again',  body:'Caffeine blocks adenosine — a chemical that makes you sleepy. With adenosine blocked, neurons fire more freely. Roll again!' },
-  13: { icon:'😴', color:'#78909C', label:'Neural Fatigue',    effect:'skip_turn',   body:'Neurons release neurotransmitters from limited vesicle stores. After heavy firing, supplies run low and signals weaken. Skip next turn.' },
-  19: { icon:'💊', color:'#80DEEA', label:'Painkiller!',       effect:'move_back',   body:'Opioid painkillers (like morphine) bind to receptors in the spinal cord and block pain signals. They also cause drowsiness — move back 2 spaces.' },
-  26: { icon:'🏃', color:'#FFD700', label:'Adrenaline Rush!',  effect:'move_forward',body:"Your adrenal glands just flooded your blood with adrenaline (epinephrine)! Heart racing, pupils dilated, muscles primed. Move forward 3 extra spaces!" },
-};
-Object.keys(SPECIAL_SQUARES).forEach(k => SQUARE_TYPES[+k] = 'special');
-
-// SQUARE LABELS (shown on the board)
-const SQUARE_LABELS = {
-  1: 'START', 36: 'FINISH!',
-  4: 'Myelin\n↑', 14: 'Fast\nAxon',
-  9: 'Reward\n↑', 22: 'Dopamine',
-  20: 'LTP ↑', 31: 'Memory',
-  17: 'GABA\n↓', 7:  'Inhibited',
-  28: 'Refract\n↓', 13: 'Refractory',
-  33: 'Opioid\n↓', 21: 'Blocked',
-  3: '☕', 13: '😴', 19: '💊', 26: '🏃',
-  6: '❓', 11: '❓', 15: '❓', 24: '❓', 27: '❓', 30: '❓', 34: '❓',
+// ── NT DATA ───────────────────────────────────────────────────
+const NT = {
+  GLU:  { name:'Glutamate',      abbr:'Glu',  color:'#FFD700', desc:'Main excitatory NT — opens Na⁺ channels, depolarises' },
+  GABA: { name:'GABA',           abbr:'GABA', color:'#FF6B6B', desc:'Main inhibitory NT — opens Cl⁻ channels, hyperpolarises' },
+  ACH:  { name:'Acetylcholine',  abbr:'ACh',  color:'#00CED1', desc:'Neuromuscular junction NT — triggers muscle contraction' },
+  DA:   { name:'Dopamine',       abbr:'DA',   color:'#CE93D8', desc:'Reward modulator — signals "better than expected"' },
+  SP:   { name:'Substance P',    abbr:'SP',   color:'#FF69B4', desc:'Pain amplifier — released by C-fibers, NK1 receptor' },
+  NE:   { name:'Norepinephrine', abbr:'NE',   color:'#FFA040', desc:'Fight-or-flight — accelerates heart, dilates pupils' },
+  SERO: { name:'Serotonin',      abbr:'5-HT', color:'#69FF69', desc:'Mood and sleep regulator — low levels → depression' },
 };
 
-// NEUROSCIENCE FACTS for regular squares
-const FACTS = [
-  'The brain has about 86 billion neurons — roughly as many as stars in the Milky Way!',
-  'Nerve signals travel at up to 120 m/s (270 mph) in myelinated axons.',
-  'Unmyelinated C-fibers carry slow pain at just 0.5–2 m/s — that\'s why a dull ache follows a sharp sting.',
-  'The synapse gap is only 20 nanometres wide — 5,000 times thinner than a human hair.',
-  'Your brain uses 20% of your body\'s energy despite being only 2% of your weight.',
-  'A single neuron can form up to 10,000 synaptic connections with other neurons.',
-  'Neurons communicate chemically at synapses but electrically along their axons.',
-  'The cerebellum contains 70% of all neurons in the brain despite being the size of a fist.',
-  'Glial cells outnumber neurons 10:1 and provide nutrition, insulation, and cleanup.',
-  'The longest axon in your body runs from your lower spine to your big toe — nearly 1 metre!',
-  'Action potentials follow the "all-or-nothing" rule — partial firing doesn\'t exist.',
-  'REM sleep is when your brain consolidates memories through synaptic plasticity.',
-  'Stress hormones (cortisol) can actually shrink the hippocampus over time.',
-  'Meditation has been shown to physically thicken the prefrontal cortex.',
-  'The vagus nerve connects your gut to your brain — explaining the "gut feeling"!',
+const NTYPE = {
+  SENSORY:    { color:'#4FC3F7', label:'Sensory Neuron' },
+  INTER:      { color:'#CE93D8', label:'Interneuron' },
+  MOTOR:      { color:'#81C784', label:'Motor Neuron' },
+  INHIBITORY: { color:'#EF9A9A', label:'Inhibitory Neuron' },
+  RELAY:      { color:'#80DEEA', label:'Relay Neuron' },
+  DOPAMINE:   { color:'#BA68C8', label:'Dopaminergic Neuron' },
+  CORTICAL:   { color:'#FFCA28', label:'Cortical Neuron' },
+  MUSCLE:     { color:'#A5D6A7', label:'Muscle Fiber' },
+};
+
+// ── LEVELS ────────────────────────────────────────────────────
+const LEVELS = [
+  {
+    title:'Level 1', name:'Knee-Jerk Reflex',
+    context:'<strong>The patellar reflex:</strong> a tap on the knee stretches the muscle, triggering a signal that travels to the spinal cord and back — without involving the brain at all.',
+    hint:'Start with a sensory neuron. End with one that controls muscles.',
+    fact:'This is one of the <em>fastest</em> reflexes in the body — only ONE synapse between sensor and motor neuron. The whole arc completes in about <strong>25 milliseconds</strong>.',
+    timeLimit: 55,
+    numSlots: 3,
+    slotHints:['Stimulus', '', 'Response'],
+    tiles:[
+      { id:'T1', name:'Muscle Spindle',      sub:'Ia Afferent',       type:'SENSORY',    rel:'GLU',  acc:null  },
+      { id:'T2', name:'Spinal Interneuron',  sub:'Dorsal Horn',       type:'INTER',      rel:'GLU',  acc:'GLU' },
+      { id:'T3', name:'Motor Neuron',        sub:'α-motor, ventral horn', type:'MOTOR',  rel:'ACH',  acc:'GLU' },
+      { id:'D1', name:'Nociceptor',          sub:'Pain C-fiber',      type:'SENSORY',    rel:'SP',   acc:null,  dist:true },
+      { id:'D2', name:'Renshaw Cell',        sub:'Inhibitory IN',     type:'INHIBITORY', rel:'GABA', acc:'ACH', dist:true },
+    ],
+    solution:['T1','T2','T3'],
+  },
+  {
+    title:'Level 2', name:'Pain Pathway',
+    context:'<strong>Feeling pain:</strong> a nociceptor (pain sensor) sends a signal from the skin up through the spinal cord, through the thalamus, and finally into your conscious awareness in the cortex.',
+    hint:'Pain uses a special NT called Substance P at the first synapse. Then glutamate carries it the rest of the way.',
+    fact:'C-fibers conduct pain slowly (~1 m/s). That\'s why you feel a sharp sting FIRST (fast Aδ fibers), then a deep throbbing ache moments later (slow C-fibers). Two different pain signals!',
+    timeLimit: 65,
+    numSlots: 4,
+    slotHints:['Skin','Spinal Cord','Brain Relay','Awareness'],
+    tiles:[
+      { id:'T1', name:'Nociceptor',          sub:'C-fiber, skin',        type:'SENSORY',  rel:'SP',   acc:null  },
+      { id:'T2', name:'Dorsal Horn IN',      sub:'Spinal cord',          type:'INTER',    rel:'GLU',  acc:'SP'  },
+      { id:'T3', name:'Thalamus',            sub:'VPL nucleus',          type:'RELAY',    rel:'GLU',  acc:'GLU' },
+      { id:'T4', name:'Somatosensory Cortex',sub:'S1 — conscious pain',  type:'CORTICAL', rel:null,   acc:'GLU' },
+      { id:'D1', name:'Touch Fiber',         sub:'Aβ — wrong pathway',   type:'SENSORY',  rel:'GLU',  acc:null,  dist:true },
+      { id:'D2', name:'Raphe Nucleus',       sub:'Serotonin factory',    type:'RELAY',    rel:'SERO', acc:'GLU', dist:true },
+    ],
+    solution:['T1','T2','T3','T4'],
+  },
+  {
+    title:'Level 3', name:'Gate Control — Block the Pain',
+    context:'<strong>Gate Control Theory:</strong> touching a bumped area reduces pain. Why? Because touch fibers activate an <em>inhibitory</em> interneuron that literally blocks the pain signal at the spinal cord.',
+    hint:'You need an inhibitory interneuron here. The pain relay neuron must ACCEPT GABA to be blocked!',
+    fact:'This is why rubbing a bump helps! It\'s also the basis of TENS therapy, acupuncture, and even how spinal cord stimulators treat chronic pain. The "gate" is a real thing.',
+    timeLimit: 65,
+    numSlots: 3,
+    slotHints:['Touch input','Gate keeper','Pain blocked!'],
+    tiles:[
+      { id:'T1', name:'Touch Fiber',         sub:'Aβ — fast touch',      type:'SENSORY',    rel:'GLU',  acc:null  },
+      { id:'T2', name:'Inhibitory IN',       sub:'Gate interneuron',     type:'INHIBITORY', rel:'GABA', acc:'GLU' },
+      { id:'T3', name:'Pain Relay',          sub:'Projection neuron',    type:'INTER',      rel:null,   acc:'GABA'},
+      { id:'D1', name:'Nociceptor',          sub:'C-fiber — wrong input',type:'SENSORY',    rel:'SP',   acc:null,  dist:true },
+      { id:'D2', name:'Spinal Interneuron',  sub:'Excitatory — wrong!',  type:'INTER',      rel:'GLU',  acc:'GLU', dist:true },
+      { id:'D3', name:'Motor Neuron',        sub:'Wrong output',         type:'MOTOR',      rel:'ACH',  acc:'GLU', dist:true },
+    ],
+    solution:['T1','T2','T3'],
+  },
+  {
+    title:'Level 4', name:'Neuromuscular Junction',
+    context:'<strong>Moving a muscle:</strong> your brain sends a command down the corticospinal tract to a motor neuron. But at the muscle, the signal switches to a completely different neurotransmitter.',
+    hint:'The brain talks to motor neurons with Glutamate. But motor neurons talk to MUSCLES using something different — think of how botox works!',
+    fact:'Botox (botulinum toxin) works by blocking the release of <strong>acetylcholine</strong> at the neuromuscular junction. No ACh → no muscle contraction → wrinkles relax. In high enough doses it causes full paralysis.',
+    timeLimit: 55,
+    numSlots: 3,
+    slotHints:['Brain command','Spinal cord','Muscle'],
+    tiles:[
+      { id:'T1', name:'Motor Cortex',        sub:'Upper motor neuron',   type:'CORTICAL', rel:'GLU',  acc:null  },
+      { id:'T2', name:'α-Motor Neuron',      sub:'Lower motor neuron',   type:'MOTOR',    rel:'ACH',  acc:'GLU' },
+      { id:'T3', name:'Skeletal Muscle',     sub:'Neuromuscular junction',type:'MUSCLE',  rel:null,   acc:'ACH' },
+      { id:'D1', name:'Sensory Cortex',      sub:'Wrong cortex area',    type:'CORTICAL', rel:'GLU',  acc:'GLU', dist:true },
+      { id:'D2', name:'Interneuron',         sub:'Wrong — no NMJ',       type:'INTER',    rel:'GLU',  acc:'GLU', dist:true },
+      { id:'D3', name:'Cardiac Muscle',      sub:'Accepts NE not ACh',   type:'MUSCLE',   rel:null,   acc:'NE',  dist:true },
+    ],
+    solution:['T1','T2','T3'],
+  },
+  {
+    title:'Level 5', name:'Dopamine Reward Circuit',
+    context:'<strong>Feeling rewarded:</strong> the mesolimbic pathway connects the VTA deep in the brainstem to the Nucleus Accumbens — the brain\'s pleasure centre. This circuit drives motivation, habit formation, and addiction.',
+    hint:'Glutamate activates a dopamine neuron, which then broadcasts dopamine to the reward centre. What does the reward centre do next?',
+    fact:'Dopamine doesn\'t actually signal "pleasure" — it signals <em>prediction error</em>. It fires when things go <strong>better than expected</strong>. This is why unpredictable rewards (slot machines, Instagram likes) are more addictive than predictable ones.',
+    timeLimit: 70,
+    numSlots: 4,
+    slotHints:['Prefrontal','Brainstem','Reward','Output'],
+    tiles:[
+      { id:'T1', name:'Prefrontal Cortex',   sub:'Goal-directed thought', type:'CORTICAL', rel:'GLU',  acc:null  },
+      { id:'T2', name:'VTA Neuron',          sub:'Ventral Tegmental Area',type:'DOPAMINE', rel:'DA',   acc:'GLU' },
+      { id:'T3', name:'Nucleus Accumbens',   sub:'Reward centre',         type:'RELAY',    rel:'GLU',  acc:'DA'  },
+      { id:'T4', name:'Striatum',            sub:'Motor output & habit',  type:'INTER',    rel:null,   acc:'GLU' },
+      { id:'D1', name:'Raphe Nucleus',       sub:'Serotonin — wrong NT',  type:'RELAY',    rel:'SERO', acc:'GLU', dist:true },
+      { id:'D2', name:'Amygdala',            sub:'Fear — wrong circuit',  type:'CORTICAL', rel:'GLU',  acc:'GLU', dist:true },
+      { id:'D3', name:'GABA Interneuron',    sub:'Inhibitory — wrong',    type:'INHIBITORY',rel:'GABA',acc:'DA',  dist:true },
+    ],
+    solution:['T1','T2','T3','T4'],
+  },
+  {
+    title:'Level 6', name:'Fight or Flight',
+    context:'<strong>Responding to threat:</strong> the sympathetic nervous system is a two-neuron chain. The first neuron uses one NT inside the nervous system; the second switches to a completely different one at the target organ.',
+    hint:'The preganglionic neuron uses ACh. But at the organ, the postganglionic switches to norepinephrine (the chemical form of adrenaline).',
+    fact:'The adrenal medulla is basically a modified sympathetic ganglion — instead of releasing NE from axon terminals, it dumps <strong>epinephrine (adrenaline) directly into your bloodstream</strong> for a whole-body response.',
+    timeLimit: 75,
+    numSlots: 4,
+    slotHints:['Hypothalamus','Spinal cord','Ganglion','Target organ'],
+    tiles:[
+      { id:'T1', name:'Hypothalamus',        sub:'Threat detection',       type:'CORTICAL', rel:'GLU',  acc:null  },
+      { id:'T2', name:'Preganglionic Neuron',sub:'T1–L2 spinal cord',      type:'INTER',    rel:'ACH',  acc:'GLU' },
+      { id:'T3', name:'Sympathetic Ganglion',sub:'Paravertebral chain',    type:'RELAY',    rel:'NE',   acc:'ACH' },
+      { id:'T4', name:'Heart / Adrenal',     sub:'Target organ',           type:'MOTOR',    rel:null,   acc:'NE'  },
+      { id:'D1', name:'Parasympathetic GG',  sub:'ACh both sides — wrong', type:'RELAY',    rel:'ACH',  acc:'ACH', dist:true },
+      { id:'D2', name:'VTA Neuron',          sub:'Dopamine — wrong',       type:'DOPAMINE', rel:'DA',   acc:'GLU', dist:true },
+      { id:'D3', name:'Dorsal Horn IN',      sub:'Pain relay — wrong',     type:'INTER',    rel:'GLU',  acc:'SP',  dist:true },
+    ],
+    solution:['T1','T2','T3','T4'],
+  },
+  {
+    title:'Level 7', name:'Serotonin & Mood',
+    context:'<strong>Regulating mood:</strong> the raphe nuclei broadcast serotonin widely across the brain — to the hippocampus (memory/mood), amygdala (fear), and prefrontal cortex (executive function).',
+    hint:'Glutamate activates the serotonin factory. Then serotonin spreads to its targets.',
+    fact:'SSRIs (like Prozac) block serotonin reabsorption, increasing its time in the synapse. But they take <strong>2–4 weeks to work</strong> — suggesting antidepressants act through long-term neuroplasticity changes, not just immediate NT increases.',
+    timeLimit: 70,
+    numSlots: 4,
+    slotHints:['Stress signal','Serotonin source','Memory & mood','Executive control'],
+    tiles:[
+      { id:'T1', name:'Amygdala',            sub:'Stress / threat signal', type:'CORTICAL', rel:'GLU',  acc:null  },
+      { id:'T2', name:'Raphe Nuclei',        sub:'Serotonin factory',      type:'RELAY',    rel:'SERO', acc:'GLU' },
+      { id:'T3', name:'Hippocampus',         sub:'Memory & mood',          type:'INTER',    rel:'GLU',  acc:'SERO'},
+      { id:'T4', name:'Prefrontal Cortex',   sub:'Executive control',      type:'CORTICAL', rel:null,   acc:'GLU' },
+      { id:'D1', name:'VTA Neuron',          sub:'Dopamine — wrong NT',    type:'DOPAMINE', rel:'DA',   acc:'GLU', dist:true },
+      { id:'D2', name:'Thalamus',            sub:'GLU relay — wrong NT here', type:'RELAY', rel:'GLU',  acc:'GLU', dist:true },
+      { id:'D3', name:'GABA Interneuron',    sub:'Inhibitory — wrong',     type:'INHIBITORY',rel:'GABA',acc:'SERO',dist:true },
+    ],
+    solution:['T1','T2','T3','T4'],
+  },
+  {
+    title:'Level 8', name:'Full Sensorimotor Circuit',
+    context:'<strong>The complete journey:</strong> from a painful stimulus on your skin, all the way up to the brain and back down to a motor response. Five synapses. Four different neurotransmitters.',
+    hint:'Pain uses Substance P first. Then it\'s carried by Glutamate to the brain. At some point Dopamine enters the picture before the motor command goes out via ACh.',
+    fact:'A voluntary response to pain takes ~150–200ms — traversing this entire circuit. Each synaptic delay is just ~0.5ms. The rest of the time is axon conduction and cortical processing. You are essentially a bag of slow cables.',
+    timeLimit: 90,
+    numSlots: 5,
+    slotHints:['Skin','Spinal Cord','Thalamus','Cortex','Muscle'],
+    tiles:[
+      { id:'T1', name:'Nociceptor',          sub:'C-fiber, skin',          type:'SENSORY',  rel:'SP',   acc:null  },
+      { id:'T2', name:'Dorsal Horn IN',      sub:'Spinal cord relay',      type:'INTER',    rel:'GLU',  acc:'SP'  },
+      { id:'T3', name:'Thalamus',            sub:'Sensory relay station',  type:'RELAY',    rel:'DA',   acc:'GLU' },
+      { id:'T4', name:'Motor Cortex',        sub:'Voluntary movement',     type:'CORTICAL', rel:'GLU',  acc:'DA'  },
+      { id:'T5', name:'α-Motor Neuron',      sub:'→ neuromuscular junction',type:'MOTOR',   rel:'ACH',  acc:'GLU' },
+      { id:'T6', name:'Skeletal Muscle',     sub:'Effector — final output',type:'MUSCLE',   rel:null,   acc:'ACH' },
+      { id:'D1', name:'Raphe Nucleus',       sub:'5-HT — not in this loop',type:'RELAY',    rel:'SERO', acc:'GLU', dist:true },
+      { id:'D2', name:'GABA Interneuron',    sub:'Inhibitory — wrong here', type:'INHIBITORY',rel:'GABA',acc:'DA', dist:true },
+    ],
+    solution:['T1','T2','T3','T4','T5','T6'],
+  },
 ];
-
-// QUIZ QUESTIONS (accessible to everyone)
-const QUESTIONS = [
-  {
-    q: 'Which chemical gives you that feel-good rush of reward?',
-    opts: ['Dopamine', 'GABA', 'Histamine'],
-    ans: 0,
-    fact: 'Dopamine is released by the brain\'s reward circuit (the VTA → Nucleus Accumbens pathway) whenever something is better than expected. It\'s why sugar, likes, and gambling are so compelling!',
-  },
-  {
-    q: 'What does the brain\'s natural "brake pedal" neurotransmitter do?',
-    opts: ['Slows things down (inhibitory)', 'Speeds things up (excitatory)', 'Makes you feel pain'],
-    ans: 0,
-    fact: 'GABA (gamma-aminobutyric acid) is the brain\'s main inhibitory neurotransmitter. It calms neural activity — anxiety drugs like Valium and alcohol both work by boosting GABA.',
-  },
-  {
-    q: 'Why do myelinated nerves conduct signals faster?',
-    opts: ['Signal jumps between gaps (saltatory conduction)', 'They have more ions', 'They are shorter'],
-    ans: 0,
-    fact: 'Myelin is a fatty insulator that makes the signal "leap" from one Node of Ranvier to the next — called saltatory conduction (from Latin saltare, to jump). It\'s up to 100× faster than unmyelinated fibers!',
-  },
-  {
-    q: 'What triggers the "fight or flight" response?',
-    opts: ['Adrenaline (epinephrine)', 'Serotonin', 'Melatonin'],
-    ans: 0,
-    fact: 'Adrenaline (epinephrine) is released by the adrenal glands, flooding the blood. It accelerates your heart, dilates pupils, diverts blood to muscles, and shuts down digestion — prepping you to fight or flee!',
-  },
-  {
-    q: 'Serotonin is best known for regulating your...',
-    opts: ['Mood and sleep', 'Muscle contractions', 'Balance and coordination'],
-    ans: 0,
-    fact: 'Serotonin helps regulate mood, sleep, appetite and social behaviour. 90% of your body\'s serotonin is actually made in your gut! SSRIs like Prozac boost available serotonin to treat depression.',
-  },
-  {
-    q: 'What happens at a SYNAPSE?',
-    opts: ['One neuron sends chemical messages to another', 'The brain stores a memory', 'A muscle contracts'],
-    ans: 0,
-    fact: 'At a synapse, the arriving electrical signal triggers the release of chemical neurotransmitters. These float across the tiny synaptic cleft and bind to receptors on the next neuron, continuing — or stopping — the signal.',
-  },
-  {
-    q: 'Your resting nerve cell has a charge of...',
-    opts: ['−70 millivolts (negative)', '+40 millivolts (positive)', '0 volts (neutral)'],
-    ans: 0,
-    fact: 'The resting membrane potential is −70 mV — the inside of the cell is negative compared to outside. When stimulated above −55 mV (the threshold), the cell fires an action potential that peaks at +40 mV!',
-  },
-];
-
-// ── PARTICLES ────────────────────────────────────────────────
-const particles = [];
-const lerp  = (a,b,t) => a+(b-a)*t;
-const clamp = (v,lo,hi) => Math.max(lo, Math.min(hi, v));
-const rand  = (lo,hi) => lo + Math.random()*(hi-lo);
-
-function spawnBurst(x,y,color,n=16,spd=.14){
-  for(let i=0;i<n;i++){
-    const a=(Math.PI*2*i/n)+rand(-.3,.3), s=spd*rand(.5,1.5);
-    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,color,life:rand(350,800),max:800,sz:rand(2,4)});
-  }
-}
-function spawnTrail(x,y,color){
-  for(let i=0;i<4;i++)
-    particles.push({x:x+rand(-6,6),y:y+rand(-6,6),vx:rand(-.04,.04),vy:rand(-.06,0),color,life:rand(200,500),max:500,sz:rand(2,3.5)});
-}
-function hexRgb(h){const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return[r,g,b];}
-function rgba(h,a){const[r,g,b]=hexRgb(h);return`rgba(${r},${g},${b},${a})`;}
 
 // ── GAME STATE ────────────────────────────────────────────────
 const G = {
-  pos: 1,          // current square (1-36)
+  lvlIdx: 0,
+  slots: [],        // array of tile IDs or null  (length = numSlots)
+  selectedTileId: null,
   score: 0,
-  state: 'idle',   // idle | rolling | moving | event | quiz | paused
-  skipTurn: false,
-  diceVal: 1,
-  quizIdx: -1,
-  quizAnswered: false,
-  t: 0,
-  // token animation
-  tokenPath: [],   // squares to move through
-  tokenStep: 0,
-  tokenT: 0,       // 0-1 lerp between steps
-  tokenX: 0, tokenY: 0,
-  pendingEffect: null,
+  levelTime: 0,
+  timerMax: 0,
+  wrongFires: 0,
+  state: 'idle',    // idle | firing | complete
+  levelsComplete: [],
 };
 
-// ── DICE FACES ────────────────────────────────────────────────
-const DICE_FACES = ['⚡','①','②','③','④','⑤','⑥'];
+let animT = 0;
 
-// ── RENDERING ────────────────────────────────────────────────
-const TYPE_COLOR = {
-  normal:      '#1a2a4a',
-  start:       '#1B3A2A',
-  finish:      '#2E2200',
-  ladder_base: '#0D2A35',
-  ladder_top:  '#0D2A35',
-  snake_head:  '#2D0D0D',
-  snake_tail:  '#2D0D0D',
-  quiz:        '#1E1800',
-  special:     '#1A0D2E',
-};
-const TYPE_BORDER = {
-  normal:      '#2E4A6A',
-  start:       '#2ECC71',
-  finish:      '#FFD700',
-  ladder_base: '#4FC3F7',
-  ladder_top:  '#4FC3F7',
-  snake_head:  '#EF9A9A',
-  snake_tail:  '#EF9A9A',
-  quiz:        '#FFC107',
-  special:     '#CE93D8',
-};
+// ── BUILD LEVEL UI ────────────────────────────────────────────
+function loadLevel(idx) {
+  const lvl = LEVELS[idx];
+  G.lvlIdx = idx;
+  G.slots = new Array(lvl.numSlots).fill(null);
+  G.selectedTileId = null;
+  G.levelTime = 0;
+  G.timerMax = lvl.timeLimit;
+  G.wrongFires = 0;
+  G.state = 'idle';
 
-function drawBoard(t) {
-  const cs = cellSize();
-  const { x: bx, y: by } = boardOrigin();
+  document.getElementById('lvlTag').textContent  = `${lvl.title.toUpperCase()} OF ${LEVELS.length}`;
+  document.getElementById('lvlName').textContent = lvl.name;
+  document.getElementById('contextClue').innerHTML = lvl.context;
+  updateScore();
+  updateProgDots();
+  buildPath(lvl);
+  buildBank(lvl);
+  updateFireBtn();
+  updateFireStatus('Tap a tile to select it, then tap a slot to place it');
 
-  // Board background
-  ctx.save();
-  ctx.shadowColor = 'rgba(79,195,247,.06)';
-  ctx.shadowBlur  = 40;
-  ctx.fillStyle   = 'rgba(5,5,18,.95)';
-  ctx.strokeStyle = 'rgba(79,195,247,.06)';
-  ctx.lineWidth   = 1;
-  roundRect(ctx, bx-4, by-4, cs*GRID+8, cs*GRID+8, 14);
-  ctx.fill(); ctx.stroke();
-  ctx.restore();
+  // Show intro sheet
+  showSheet('💡', lvl.name, `<strong>Tip:</strong> ${lvl.hint}`, [
+    { label:'Got it — let\'s go!', cls:'green', action: closeSheet },
+  ]);
+}
 
-  // Cells
-  for (let n = 1; n <= TOTAL; n++) {
-    const { x, y } = sqPos(n);
-    const type = SQUARE_TYPES[n];
-    const isHere = (n === G.pos);
+function buildPath(lvl) {
+  const row = document.getElementById('pathRow');
+  row.innerHTML = '';
 
-    ctx.save();
-    if (isHere) { ctx.shadowColor = '#FFFFFF'; ctx.shadowBlur = 18; }
+  const vw = window.innerWidth;
+  const tileW = Math.max(90, Math.min(150, Math.floor((vw - 60 - (lvl.numSlots-1)*44) / lvl.numSlots)));
+  const tileH = Math.max(90, Math.min(120, Math.round(tileW * 0.78)));
 
-    // Cell background
-    ctx.fillStyle = TYPE_COLOR[type] || TYPE_COLOR.normal;
-    ctx.strokeStyle = TYPE_BORDER[type] || TYPE_BORDER.normal;
-    ctx.lineWidth = isHere ? 2.5 : 1;
-    roundRect(ctx, x-cs/2+2, y-cs/2+2, cs-4, cs-4, 8);
-    ctx.fill(); ctx.stroke();
+  for (let i = 0; i < lvl.numSlots; i++) {
+    // Slot
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+    slot.id = `slot-${i}`;
+    slot.style.width  = tileW + 'px';
+    slot.style.height = tileH + 'px';
 
-    // Subtle neuron glow on hover-ish pulse
-    if (!isHere) {
-      const pulse = Math.sin(t*.001 + n*.4)*.5+.5;
-      ctx.globalAlpha = pulse * 0.04;
-      ctx.fillStyle = TYPE_BORDER[type] || '#4FC3F7';
-      roundRect(ctx, x-cs/2+2, y-cs/2+2, cs-4, cs-4, 8);
-      ctx.fill();
-      ctx.globalAlpha = 1;
+    const hint = document.createElement('div');
+    hint.className = 'slot-hint';
+    hint.textContent = lvl.slotHints[i] || '';
+    slot.appendChild(hint);
+
+    const numLbl = document.createElement('div');
+    numLbl.className = 'slot-num';
+    numLbl.textContent = i + 1;
+    slot.appendChild(numLbl);
+
+    const emptyIcon = document.createElement('div');
+    emptyIcon.className = 'slot-empty-icon';
+    emptyIcon.textContent = '🧬';
+    emptyIcon.id = `slot-empty-${i}`;
+    slot.appendChild(emptyIcon);
+
+    slot.addEventListener('click', () => onSlotClick(i));
+    row.appendChild(slot);
+
+    // Connector (not after last slot)
+    if (i < lvl.numSlots - 1) {
+      const conn = document.createElement('div');
+      conn.className = 'conn';
+      conn.id = `conn-${i}`;
+      conn.innerHTML = `
+        <div class="conn-check" id="conn-check-${i}">—</div>
+        <div class="conn-arrow">→</div>
+        <div class="conn-nt" id="conn-nt-${i}">?</div>
+      `;
+      row.appendChild(conn);
     }
-
-    ctx.restore();
-
-    // Square number
-    ctx.save();
-    ctx.font = `bold ${Math.max(9, cs*0.15)}px Courier New`;
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.fillStyle = rgba(TYPE_BORDER[type]||'#4FC3F7', 0.5);
-    ctx.fillText(n, x - cs/2 + 5, y - cs/2 + 4);
-    ctx.restore();
-
-    // Cell icon / label
-    drawCellIcon(n, x, y, cs, t);
-  }
-
-  // Ladders
-  LADDERS.forEach(l => drawLadder(l, t));
-  // Snakes
-  SNAKES.forEach(s => drawSnake(s, t));
-}
-
-function drawCellIcon(n, x, y, cs, t) {
-  const type = SQUARE_TYPES[n];
-  const fs = Math.max(10, cs * 0.18);
-  ctx.save();
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-
-  if (n === 1) {
-    ctx.font = `bold ${fs}px Courier New`;
-    ctx.fillStyle = '#2ECC71'; ctx.shadowColor = '#2ECC71'; ctx.shadowBlur = 8;
-    ctx.fillText('START', x, y);
-  } else if (n === 36) {
-    const pulse = Math.sin(t*.003)*.5+.5;
-    ctx.font = `bold ${fs}px Courier New`;
-    ctx.fillStyle = `rgba(255,215,0,${.7+pulse*.3})`; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 12+pulse*8;
-    ctx.fillText('BRAIN!', x, y-fs*.4);
-    ctx.font = `${fs*.7}px Courier New`;
-    ctx.fillText('FINISH', x, y+fs*.55);
-  } else if (type === 'quiz') {
-    const pulse = Math.sin(t*.002+n)*.5+.5;
-    ctx.font = `${cs*.38}px serif`;
-    ctx.globalAlpha = .6+pulse*.4;
-    ctx.shadowColor = '#FFC107'; ctx.shadowBlur = 6+pulse*10;
-    ctx.fillText('❓', x, y);
-  } else if (type === 'special') {
-    const sp = SPECIAL_SQUARES[n];
-    ctx.font = `${cs*.36}px serif`;
-    ctx.shadowColor = sp.color; ctx.shadowBlur = 8;
-    ctx.fillText(sp.icon, x, y);
-  } else if (type === 'ladder_base') {
-    ctx.font = `bold ${fs*.85}px Courier New`;
-    ctx.fillStyle = '#4FC3F7'; ctx.shadowColor = '#4FC3F7'; ctx.shadowBlur = 7;
-    ctx.fillText('▲ LAUNCH', x, y);
-  } else if (type === 'snake_head') {
-    ctx.font = `bold ${fs*.85}px Courier New`;
-    ctx.fillStyle = '#EF9A9A'; ctx.shadowColor = '#EF9A9A'; ctx.shadowBlur = 7;
-    ctx.fillText('▼ GABA!', x, y);
-  } else {
-    // Regular square — small neuron dot
-    const pulse = Math.sin(t*.0012+n*.7)*.5+.5;
-    ctx.fillStyle = rgba('#4FC3F7', .15+pulse*.12);
-    ctx.shadowColor = '#4FC3F7'; ctx.shadowBlur = 4+pulse*6;
-    ctx.beginPath(); ctx.arc(x, y, cs*.14, 0, Math.PI*2); ctx.fill();
-  }
-  ctx.restore();
-}
-
-function drawLadder(l, t) {
-  const a = sqPos(l.from), b = sqPos(l.to);
-  const pulse = Math.sin(t*.002)*.5+.5;
-  const cs = cellSize();
-
-  ctx.save();
-  // glow
-  ctx.shadowColor = l.color; ctx.shadowBlur = 8+pulse*12;
-  ctx.strokeStyle = rgba(l.color, .55+pulse*.2);
-  ctx.lineWidth = cs*.07;
-  ctx.lineCap = 'round';
-
-  // Main line (slightly curved)
-  const mx = (a.x+b.x)/2 - (b.y-a.y)*.15;
-  const my = (a.y+b.y)/2 + (b.x-a.x)*.15;
-  ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.quadraticCurveTo(mx,my,b.x,b.y); ctx.stroke();
-
-  // Rungs
-  ctx.lineWidth = cs*.04;
-  ctx.shadowBlur = 4;
-  for (let i=.25;i<=.75;i+=.25) {
-    const lx = lerp(a.x,b.x,i), ly = lerp(a.y,b.y,i);
-    const perp = { x:-(b.y-a.y)*.1, y:(b.x-a.x)*.1 };
-    ctx.beginPath();
-    ctx.moveTo(lx-perp.x, ly-perp.y);
-    ctx.lineTo(lx+perp.x, ly+perp.y);
-    ctx.stroke();
-  }
-
-  // Label at midpoint
-  ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
-  ctx.font = `bold ${Math.max(9,cs*.13)}px Courier New`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = rgba(l.color, .8);
-  ctx.fillText(l.icon+' '+l.label, mx, my - cs*.15);
-  ctx.restore();
-}
-
-function drawSnake(s, t) {
-  const a = sqPos(s.from), b = sqPos(s.to);
-  const pulse = Math.sin(t*.0018+s.from)*.5+.5;
-  const cs = cellSize();
-
-  ctx.save();
-  ctx.shadowColor = s.color; ctx.shadowBlur = 6+pulse*10;
-  ctx.strokeStyle = rgba(s.color, .55+pulse*.2);
-  ctx.lineWidth = cs*.07;
-  ctx.lineCap = 'round';
-
-  // Wavy snake path (multiple control points)
-  const steps = 20;
-  ctx.beginPath();
-  for (let i = 0; i <= steps; i++) {
-    const tt = i / steps;
-    const lx = lerp(a.x, b.x, tt);
-    const ly = lerp(a.y, b.y, tt);
-    const wave = Math.sin(tt * Math.PI * 3 + t*.003) * cs * .22;
-    const dx = -(b.y-a.y), dy = (b.x-a.x);
-    const dl = Math.hypot(dx,dy)||1;
-    const wx = lx + (dx/dl)*wave, wy = ly + (dy/dl)*wave;
-    i===0 ? ctx.moveTo(wx,wy) : ctx.lineTo(wx,wy);
-  }
-  ctx.stroke();
-
-  // Snake head at `from`
-  ctx.shadowBlur = 14;
-  ctx.fillStyle = s.color;
-  ctx.beginPath(); ctx.arc(a.x, a.y, cs*.14, 0, Math.PI*2); ctx.fill();
-
-  // Label
-  ctx.shadowBlur = 0; ctx.shadowColor='transparent';
-  const mx = (a.x+b.x)/2 + cs*.35;
-  const my = (a.y+b.y)/2;
-  ctx.font = `bold ${Math.max(9,cs*.13)}px Courier New`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = rgba(s.color, .8);
-  ctx.fillText(s.icon+' '+s.label, mx, my);
-  ctx.restore();
-}
-
-function drawToken(t) {
-  const tx = G.tokenX, ty = G.tokenY;
-  const pulse = Math.sin(t*.005)*.5+.5;
-  const cs = cellSize();
-
-  ctx.save();
-  // outer pulse ring
-  ctx.shadowColor = '#FFFFFF';
-  ctx.shadowBlur = 20+pulse*20;
-  ctx.strokeStyle = rgba('#FFFFFF', .3+pulse*.4);
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(tx, ty, cs*.22+pulse*cs*.04, 0, Math.PI*2); ctx.stroke();
-
-  // inner glow
-  ctx.shadowBlur = 30;
-  const g = ctx.createRadialGradient(tx,ty,0,tx,ty,cs*.18);
-  g.addColorStop(0,'rgba(255,255,255,.95)');
-  g.addColorStop(.5,'rgba(100,200,255,.6)');
-  g.addColorStop(1,'rgba(79,195,247,0)');
-  ctx.fillStyle = g;
-  ctx.beginPath(); ctx.arc(tx, ty, cs*.18, 0, Math.PI*2); ctx.fill();
-
-  // core dot
-  ctx.shadowBlur = 15;
-  ctx.fillStyle = '#FFFFFF';
-  ctx.beginPath(); ctx.arc(tx, ty, cs*.09, 0, Math.PI*2); ctx.fill();
-  ctx.restore();
-
-  // trail
-  if (G.state === 'moving') spawnTrail(tx, ty, '#4FC3F7');
-}
-
-function drawBG() {
-  ctx.fillStyle = '#020208';
-  ctx.fillRect(0, 0, W(), H());
-  // subtle grid
-  ctx.strokeStyle = 'rgba(50,60,120,.04)';
-  ctx.lineWidth = 1;
-  for (let x=0;x<W();x+=44){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H());ctx.stroke();}
-  for (let y=0;y<H();y+=44){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W(),y);ctx.stroke();}
-  // vignette
-  const vg = ctx.createRadialGradient(W()/2,H()/2,0,W()/2,H()/2,Math.max(W(),H())*.75);
-  vg.addColorStop(0,'transparent'); vg.addColorStop(1,'rgba(2,2,8,.55)');
-  ctx.fillStyle = vg; ctx.fillRect(0,0,W(),H());
-}
-
-function drawParticles() {
-  for (const p of particles) {
-    const a = clamp(p.life/p.max,0,1);
-    ctx.save(); ctx.globalAlpha=a;
-    ctx.shadowColor=p.color; ctx.shadowBlur=5;
-    ctx.fillStyle=p.color;
-    ctx.beginPath(); ctx.arc(p.x,p.y,p.sz*a,0,Math.PI*2); ctx.fill();
-    ctx.restore();
   }
 }
 
-function roundRect(ctx,x,y,w,h,r){
-  ctx.beginPath();
-  ctx.moveTo(x+r,y);
-  ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
-  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
-  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
-  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
-  ctx.closePath();
+function buildBank(lvl) {
+  const bank = document.getElementById('bankTiles');
+  bank.innerHTML = '';
+  const shuffled = [...lvl.tiles].sort(() => Math.random() - 0.5);
+
+  const vw = window.innerWidth;
+  const tileW = Math.max(110, Math.min(150, Math.floor((vw - 24) / 3 - 8)));
+
+  shuffled.forEach(t => {
+    const el = makeTileEl(t, tileW);
+    el.addEventListener('click', () => onBankTileClick(t.id));
+    bank.appendChild(el);
+  });
 }
 
-// ── GAME LOGIC ────────────────────────────────────────────────
-function rollDice() {
+function makeTileEl(tile, width) {
+  const ntc  = NTYPE[tile.type] || NTYPE.INTER;
+  const relNT = tile.rel ? NT[tile.rel] : null;
+  const accNT = tile.acc ? NT[tile.acc] : null;
+
+  const el = document.createElement('div');
+  el.className = 'tile';
+  el.id = `tile-${tile.id}`;
+  if (width) el.style.width = width + 'px';
+  el.style.background = `linear-gradient(135deg, rgba(5,5,20,.95), rgba(10,10,28,.95))`;
+  el.style.borderColor = `${ntc.color}40`;
+  el.style.boxShadow = `0 0 8px ${ntc.color}18, inset 0 0 12px rgba(0,0,0,.3)`;
+
+  el.innerHTML = `
+    <div class="tile-type" style="color:${ntc.color}">${ntc.label}</div>
+    <div class="tile-name" style="color:${ntc.color}">${tile.name}</div>
+    <div class="tile-sub">${tile.sub}</div>
+    <div class="tile-nts">
+      ${relNT ? `<span class="badge rel" style="background:${relNT.color}22;border:1px solid ${relNT.color};color:${relNT.color}">${relNT.abbr} <small>▲</small></span>` : `<span class="badge rel" style="opacity:.3;border:1px dashed #555;color:#555">source</span>`}
+      ${accNT ? `<span class="badge acc" style="border:1.5px dashed ${accNT.color};color:${accNT.color}">${accNT.abbr} <small>▼</small></span>` : `<span class="badge acc" style="opacity:.3;border:1px dashed #555;color:#555">target</span>`}
+    </div>
+  `;
+  return el;
+}
+
+// ── INTERACTIONS ──────────────────────────────────────────────
+function onBankTileClick(id) {
   if (G.state !== 'idle') return;
-  if (G.skipTurn) {
-    G.skipTurn = false;
-    setInfo("You recovered from neural fatigue. Your turn's back!");
+  const lvl = LEVELS[G.lvlIdx];
+  // If tile is placed in a slot, remove it
+  const slotIdx = G.slots.indexOf(id);
+  if (slotIdx >= 0) {
+    removeTileFromSlot(slotIdx);
+    G.selectedTileId = null;
+    updateBankSelection();
     return;
   }
-  G.state = 'rolling';
-  document.getElementById('rollBtn').disabled = true;
-  document.getElementById('dice').classList.add('rolling');
-
-  // Animate dice for 600ms
-  let spins = 0;
-  const interval = setInterval(() => {
-    G.diceVal = Math.ceil(Math.random()*6);
-    document.getElementById('dice').textContent = DICE_FACES[G.diceVal];
-    spins++;
-    if (spins >= 8) {
-      clearInterval(interval);
-      document.getElementById('dice').classList.remove('rolling');
-      beginMove(G.diceVal);
-    }
-  }, 75);
+  // Toggle selection
+  if (G.selectedTileId === id) {
+    G.selectedTileId = null;
+  } else {
+    G.selectedTileId = id;
+  }
+  updateBankSelection();
+  updateFireStatus(G.selectedTileId
+    ? `"${lvl.tiles.find(t=>t.id===G.selectedTileId)?.name}" selected — now tap a slot`
+    : 'Tap a tile to select it');
 }
 
-function beginMove(steps) {
-  const path = [];
-  for (let i = 1; i <= steps; i++) {
-    const sq = Math.min(G.pos + i, TOTAL);
-    path.push(sq);
-    if (sq === TOTAL) break;
+function onSlotClick(idx) {
+  if (G.state !== 'idle') return;
+  if (G.slots[idx]) {
+    // Remove tile from slot → back to bank
+    removeTileFromSlot(idx);
+    G.selectedTileId = null;
+    updateBankSelection();
+    updateFireStatus('Tile returned. Tap a tile to select it.');
+    return;
   }
-  G.tokenPath = path;
-  G.tokenStep = 0;
-  G.tokenT    = 0;
-  G.state     = 'moving';
-  spawnBurst(G.tokenX, G.tokenY, '#4FC3F7', 12, .12);
+  if (!G.selectedTileId) {
+    // Flash slot to prompt selection
+    const slotEl = document.getElementById(`slot-${idx}`);
+    slotEl.classList.add('drop-target');
+    setTimeout(() => slotEl.classList.remove('drop-target'), 500);
+    updateFireStatus('Select a neuron from the bank first!');
+    return;
+  }
+  placeTileInSlot(G.selectedTileId, idx);
+  G.selectedTileId = null;
+  updateBankSelection();
+  updateConnectors();
+  updateFireBtn();
+  updateFireStatus(allSlotsFilled() ? 'All placed! Hit FIRE to test the circuit.' : 'Keep building the pathway…');
 }
 
-let lastT = 0;
-function loop(t) {
-  const dt = Math.min(t - lastT, 50); lastT = t;
-  G.t = t;
+function placeTileInSlot(tileId, slotIdx) {
+  const lvl = LEVELS[G.lvlIdx];
+  const tile = lvl.tiles.find(t => t.id === tileId);
+  if (!tile) return;
 
-  // Update particles
-  for (let i=particles.length-1;i>=0;i--){
-    const p=particles[i]; p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=.015*dt/16; p.life-=dt;
-    if(p.life<=0) particles.splice(i,1);
-  }
+  G.slots[slotIdx] = tileId;
 
-  // Token animation
-  if (G.state === 'moving' && G.tokenPath.length > 0) {
-    G.tokenT += dt * .004;
-    if (G.tokenT >= 1) {
-      G.tokenT = 0;
-      G.pos = G.tokenPath[G.tokenStep];
-      G.tokenStep++;
-      const p = sqPos(G.pos);
-      G.tokenX = p.x; G.tokenY = p.y;
-      spawnBurst(p.x, p.y, '#80DEEA', 6, .08);
-      updateUI();
+  // Remove empty icon
+  const empty = document.getElementById(`slot-empty-${slotIdx}`);
+  if (empty) empty.style.display = 'none';
 
-      if (G.tokenStep >= G.tokenPath.length) {
-        // Finished moving
-        setTimeout(() => landOn(G.pos), 200);
-        G.state = 'event';
+  // Build tile in slot
+  const slotEl = document.getElementById(`slot-${slotIdx}`);
+  slotEl.classList.add('filled');
+
+  const inner = makeTileEl(tile);
+  inner.classList.add('in-slot');
+  inner.id = `slot-tile-${slotIdx}`;
+  inner.addEventListener('click', (e) => { e.stopPropagation(); onSlotClick(slotIdx); });
+  slotEl.appendChild(inner);
+
+  // Dim tile in bank
+  const bankEl = document.getElementById(`tile-${tileId}`);
+  if (bankEl) bankEl.classList.add('dimmed');
+}
+
+function removeTileFromSlot(slotIdx) {
+  const tileId = G.slots[slotIdx];
+  if (!tileId) return;
+  G.slots[slotIdx] = null;
+
+  // Remove tile el from slot
+  const placed = document.getElementById(`slot-tile-${slotIdx}`);
+  if (placed) placed.remove();
+
+  // Restore empty icon
+  const empty = document.getElementById(`slot-empty-${slotIdx}`);
+  if (empty) empty.style.display = '';
+
+  const slotEl = document.getElementById(`slot-${slotIdx}`);
+  slotEl.classList.remove('filled', 'correct', 'wrong');
+
+  // Un-dim bank tile
+  const bankEl = document.getElementById(`tile-${tileId}`);
+  if (bankEl) bankEl.classList.remove('dimmed');
+
+  updateConnectors();
+  updateFireBtn();
+  updateFireStatus('Keep building the pathway…');
+}
+
+function updateBankSelection() {
+  document.querySelectorAll('.tile').forEach(el => {
+    const id = el.id.replace('tile-', '');
+    el.classList.toggle('selected', id === G.selectedTileId);
+  });
+}
+
+function updateConnectors() {
+  const lvl = LEVELS[G.lvlIdx];
+  for (let i = 0; i < lvl.numSlots - 1; i++) {
+    const leftId  = G.slots[i];
+    const rightId = G.slots[i + 1];
+    const connEl  = document.getElementById(`conn-${i}`);
+    const ntEl    = document.getElementById(`conn-nt-${i}`);
+    const checkEl = document.getElementById(`conn-check-${i}`);
+    if (!connEl) continue;
+
+    connEl.className = 'conn';
+    ntEl.textContent = '?';
+    checkEl.textContent = '—';
+
+    if (!leftId || !rightId) continue;
+
+    const leftTile  = lvl.tiles.find(t => t.id === leftId);
+    const rightTile = lvl.tiles.find(t => t.id === rightId);
+    if (!leftTile || !rightTile) continue;
+
+    const rel = leftTile.rel;
+    const acc = rightTile.acc;
+
+    if (rel && acc) {
+      const ntData = NT[rel];
+      ntEl.textContent = ntData ? ntData.abbr : rel;
+      if (ntEl.style) ntEl.style.color = ntData ? ntData.color : '#FFF';
+
+      if (rel === acc) {
+        connEl.classList.add('valid');
+        checkEl.textContent = '✓';
+      } else {
+        connEl.classList.add('invalid');
+        checkEl.textContent = '✗';
       }
+    } else if (!rel && !acc) {
+      // both null — valid endpoint to endpoint connection
+      connEl.classList.add('valid');
+      checkEl.textContent = '✓';
+    } else if (!acc) {
+      // Right tile accepts nothing (target)
+      ntEl.textContent = rel ? (NT[rel]?.abbr || rel) : '?';
+      connEl.classList.add('valid');
+      checkEl.textContent = '✓';
     } else {
-      // Interpolate token between steps
-      const prevSq = G.tokenStep === 0 ? G.pos : G.tokenPath[G.tokenStep-1];
-      const nextSq = G.tokenPath[G.tokenStep] || G.pos;
-      const a2 = sqPos(prevSq), b2 = sqPos(nextSq);
-      G.tokenX = lerp(a2.x, b2.x, G.tokenT);
-      G.tokenY = lerp(a2.y, b2.y, G.tokenT);
+      ntEl.textContent = '?';
     }
   }
-
-  drawBG();
-  drawBoard(t);
-  drawParticles();
-  drawToken(t);
-
-  requestAnimationFrame(loop);
 }
 
-function landOn(sq) {
-  const type = SQUARE_TYPES[sq];
+function allSlotsFilled() {
+  return G.slots.every(s => s !== null);
+}
 
-  if (sq === TOTAL) { showWin(); return; }
+function checkPath() {
+  const lvl = LEVELS[G.lvlIdx];
+  if (!allSlotsFilled()) return false;
+  // Check that solution IDs match slots (any valid ordering where NT chain is correct)
+  // We check each adjacent pair: left.rel === right.acc (or null cases)
+  for (let i = 0; i < lvl.numSlots - 1; i++) {
+    const leftTile  = lvl.tiles.find(t => t.id === G.slots[i]);
+    const rightTile = lvl.tiles.find(t => t.id === G.slots[i+1]);
+    if (!leftTile || !rightTile) return false;
+    if (leftTile.rel && rightTile.acc && leftTile.rel !== rightTile.acc) return false;
+    // If right has acc but left releases nothing — invalid
+    if (!leftTile.rel && rightTile.acc) return false;
+  }
+  return true;
+}
 
-  // Ladder?
-  const ladder = LADDERS.find(l => l.from === sq);
-  if (ladder) {
-    spawnBurst(G.tokenX, G.tokenY, '#4FC3F7', 24, .16);
-    showCard('🔼 LADDER!', ladder.label,
-      getQuestionForLadder(ladder),
-      null,
-      () => G.state = 'idle',  // just show info
-      true, sq, ladder
+function updateFireBtn() {
+  const btn = document.getElementById('fireBtn');
+  if (allSlotsFilled()) {
+    btn.classList.add('ready');
+  } else {
+    btn.classList.remove('ready');
+  }
+}
+
+function updateFireStatus(msg) {
+  document.getElementById('fireStatus').innerHTML = msg;
+}
+
+// ── FIRE ──────────────────────────────────────────────────────
+function fire() {
+  if (!allSlotsFilled()) return;
+  if (G.state !== 'idle') return;
+
+  const correct = checkPath();
+
+  if (!correct) {
+    G.wrongFires++;
+    G.score = Math.max(0, G.score - 80);
+    updateScore();
+    // Highlight wrong connections
+    highlightErrors();
+    feedback(window.innerWidth/2, window.innerHeight * .4, '⚠ Wrong path! −80', '#EF5350');
+    updateFireStatus('Some connections don\'t match — check the ▲ and ▼ badges and rearrange!');
+    return;
+  }
+
+  // SUCCESS
+  G.state = 'firing';
+  document.getElementById('fireBtn').classList.remove('ready');
+
+  const timeBonus  = Math.floor(Math.max(0, G.timerMax - G.levelTime) * 6);
+  const errorPen   = G.wrongFires * 80;
+  const levelScore = Math.max(100, 500 + timeBonus - errorPen);
+  G.score += levelScore;
+  updateScore();
+  G.levelsComplete.push(G.lvlIdx);
+
+  // Green all slots + connectors
+  for (let i = 0; i < LEVELS[G.lvlIdx].numSlots; i++) {
+    document.getElementById(`slot-${i}`)?.classList.add('correct');
+  }
+
+  // AP animation on canvas, then show complete sheet
+  runAPAnimation(() => {
+    const lvl = LEVELS[G.lvlIdx];
+    const isLast = G.lvlIdx >= LEVELS.length - 1;
+    const stars = G.wrongFires === 0 ? 3 : G.wrongFires <= 1 ? 2 : 1;
+    const starStr = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+
+    showSheet('⚡', lvl.name + ' — Complete!',
+      `<span style="color:#FFD700;font-size:18px">${starStr}</span> &nbsp; <span style="color:#FFD700;font-weight:bold">+${levelScore} points</span><br><br>` +
+      `<strong style="color:#66BB6A">Science bit:</strong> ${lvl.fact}`,
+      isLast
+        ? [{ label:'See Final Score!', cls:'green', action: showFinal }]
+        : [
+            { label:'Next Level →', cls:'green', action: () => { closeSheet(); loadLevel(G.lvlIdx + 1); } },
+            { label:'Replay', cls:'',  action: () => { closeSheet(); loadLevel(G.lvlIdx); } },
+          ]
     );
-    return;
-  }
-
-  // Snake?
-  const snake = SNAKES.find(s => s.from === sq);
-  if (snake) {
-    spawnBurst(G.tokenX, G.tokenY, '#EF9A9A', 20, .13);
-    showSnakeCard(snake);
-    return;
-  }
-
-  // Quiz?
-  if (type === 'quiz') {
-    const qIdx = Math.floor(Math.random() * QUESTIONS.length);
-    showQuizCard(QUESTIONS[qIdx]);
-    return;
-  }
-
-  // Special?
-  if (type === 'special') {
-    const sp = SPECIAL_SQUARES[sq];
-    showSpecialCard(sp);
-    return;
-  }
-
-  // Regular square — show a fun fact
-  const fact = FACTS[Math.floor(Math.random() * FACTS.length)];
-  showCard('🧠 Brain Fact!', `Square ${sq}`, fact, null, () => G.state='idle');
+  });
 }
 
-function getQuestionForLadder(ladder) {
-  return `You landed on <b style="color:#4FC3F7">${ladder.icon} ${ladder.label}</b>!<br><br>` +
-    (ladder.label.includes('Myelin') ? 'Myelinated axons use <em>saltatory conduction</em> — the signal leaps between exposed nodes (Nodes of Ranvier), making transmission up to 100× faster!' :
-     ladder.label.includes('Dopamine') ? 'Dopamine neurons in the VTA fire in response to unexpected rewards — fuelling motivation, learning, and yes, addictive behaviour too.' :
-     'Long-Term Potentiation (LTP) is how your brain forms memories: repeated stimulation strengthens synaptic connections — "neurons that fire together wire together"!') +
-    `<br><br>Jump ahead to square <b style="color:#4FC3F7">${ladder.to}</b>!`;
-}
-
-function showCard(icon, title, body, btns, onClose, isLadder, sq, ladder) {
-  document.getElementById('cardIcon').textContent  = icon;
-  document.getElementById('cardTitle').textContent = title;
-  document.getElementById('cardBody').innerHTML    = body;
-  const bEl = document.getElementById('cardBtns');
-  bEl.innerHTML = '';
-  if (btns) {
-    btns.forEach(b => bEl.appendChild(b));
-  }
-  const cont = document.createElement('button');
-  cont.className = 'cont-btn';
-  cont.textContent = isLadder ? `🚀 LAUNCH to square ${ladder.to}!` : 'Got it — continue!';
-  cont.onclick = () => {
-    closeCard();
-    if (isLadder && ladder) {
-      animateJump(ladder.from, ladder.to, '#4FC3F7');
-    } else if (onClose) {
-      onClose();
+function highlightErrors() {
+  const lvl = LEVELS[G.lvlIdx];
+  for (let i = 0; i < lvl.numSlots - 1; i++) {
+    const connEl = document.getElementById(`conn-${i}`);
+    if (connEl && connEl.classList.contains('invalid')) {
+      document.getElementById(`slot-${i}`)?.classList.add('wrong');
+      document.getElementById(`slot-${i+1}`)?.classList.add('wrong');
+      setTimeout(() => {
+        document.getElementById(`slot-${i}`)?.classList.remove('wrong');
+        document.getElementById(`slot-${i+1}`)?.classList.remove('wrong');
+      }, 500);
     }
-  };
-  bEl.appendChild(cont);
-  openCard();
+  }
 }
 
-function showSnakeCard(snake) {
-  document.getElementById('cardIcon').textContent  = '🔽';
-  document.getElementById('cardTitle').textContent = `GABA Inhibition! ${snake.label}`;
-  const bodyText = snake.label.includes('GABA')
-    ? 'GABA floods the synapse and opens chloride channels — the cell becomes <em>hyperpolarized</em>, making it harder to fire. Your signal is suppressed!'
-    : snake.label.includes('Refractory')
-    ? 'After firing, sodium channels temporarily inactivate — the membrane can\'t respond to new signals. This <em>refractory period</em> limits firing frequency to ~1000 Hz max.'
-    : 'Opioid receptors on pain neurons, when activated, open K⁺ channels that hyperpolarize the cell — blocking pain signals. Natural endorphins do this; so do morphine and heroin.';
-  document.getElementById('cardBody').innerHTML = bodyText + `<br><br>Slide back to square <b style="color:#EF9A9A">${snake.to}</b>!`;
-  document.getElementById('cardBtns').innerHTML = '';
-  const cont = document.createElement('button');
-  cont.className = 'cont-btn';
-  cont.style.borderColor='rgba(239,154,154,.3)'; cont.style.color='#EF9A9A';
-  cont.textContent = `😬 Slide back to square ${snake.to}...`;
-  cont.onclick = () => { closeCard(); animateJump(snake.from, snake.to, '#EF9A9A', true); };
-  document.getElementById('cardBtns').appendChild(cont);
-  openCard();
+// ── AP CANVAS ANIMATION ───────────────────────────────────────
+function runAPAnimation(onDone) {
+  const lvl = LEVELS[G.lvlIdx];
+  const positions = [];
+  for (let i = 0; i < lvl.numSlots; i++) {
+    const el = document.getElementById(`slot-${i}`);
+    if (el) {
+      const r = el.getBoundingClientRect();
+      positions.push({ x: r.left + r.width/2, y: r.top + r.height/2 });
+    }
+  }
+  if (positions.length < 2) { onDone(); return; }
+
+  const total = (positions.length - 1);
+  const segDur = 450;
+  const startT = performance.now();
+
+  function frame(t) {
+    const elapsed = t - startT;
+    const seg = Math.min(Math.floor(elapsed / segDur), total - 1);
+    const segT = clamp((elapsed - seg * segDur) / segDur, 0, 1);
+
+    bgCtx.clearRect(0, 0, bgCvs.width, bgCvs.height);
+
+    // Draw trail
+    for (let i = 0; i <= seg; i++) {
+      const a = positions[i], b = positions[Math.min(i+1, positions.length-1)];
+      const t2 = i < seg ? 1 : segT;
+      const px = lerp(a.x, b.x, t2), py = lerp(a.y, b.y, t2);
+
+      // Segment line
+      bgCtx.save();
+      bgCtx.shadowColor = '#4FC3F7'; bgCtx.shadowBlur = 14;
+      bgCtx.strokeStyle = 'rgba(79,195,247,.6)';
+      bgCtx.lineWidth = 3; bgCtx.lineCap = 'round';
+      bgCtx.beginPath(); bgCtx.moveTo(a.x, a.y); bgCtx.lineTo(px, py); bgCtx.stroke();
+      bgCtx.restore();
+    }
+
+    // Current pulse
+    const curA = positions[seg], curB = positions[Math.min(seg+1, positions.length-1)];
+    const px = lerp(curA.x, curB.x, segT), py = lerp(curA.y, curB.y, segT);
+
+    bgCtx.save();
+    bgCtx.shadowColor = '#FFF'; bgCtx.shadowBlur = 40;
+    bgCtx.fillStyle = '#FFF';
+    bgCtx.beginPath(); bgCtx.arc(px, py, 10, 0, Math.PI*2); bgCtx.fill();
+    bgCtx.shadowBlur = 14;
+    bgCtx.fillStyle = '#4FC3F7';
+    bgCtx.beginPath(); bgCtx.arc(px, py, 5, 0, Math.PI*2); bgCtx.fill();
+    bgCtx.restore();
+
+    // Burst at each reached neuron
+    if (seg > 0 && segT < 0.1) {
+      const np = positions[seg];
+      for (let b2 = 0; b2 < 12; b2++) {
+        const a2 = (Math.PI*2*b2/12);
+        bgCtx.save();
+        bgCtx.globalAlpha = 0.7 * (1 - segT*10);
+        bgCtx.shadowColor='#4FC3F7'; bgCtx.shadowBlur=10;
+        bgCtx.fillStyle='#4FC3F7';
+        bgCtx.beginPath();
+        bgCtx.arc(np.x + Math.cos(a2)*20*(segT*10), np.y + Math.sin(a2)*20*(segT*10), 4, 0, Math.PI*2);
+        bgCtx.fill(); bgCtx.restore();
+      }
+    }
+
+    const done = elapsed >= total * segDur + 300;
+    if (!done) {
+      requestAnimationFrame(frame);
+    } else {
+      // Fade out
+      setTimeout(() => { bgCtx.clearRect(0,0,bgCvs.width,bgCvs.height); }, 400);
+      onDone();
+    }
+  }
+  requestAnimationFrame(frame);
 }
 
-function showQuizCard(q) {
-  G.state = 'quiz';
-  G.quizAnswered = false;
-  document.getElementById('cardIcon').textContent  = '❓';
-  document.getElementById('cardTitle').textContent = 'Brain Quiz!';
-  document.getElementById('cardBody').innerHTML    = `<b>${q.q}</b>`;
-  const bEl = document.getElementById('cardBtns');
+function lerp(a,b,t){ return a+(b-a)*t; }
+function clamp(v,lo,hi){ return Math.max(lo,Math.min(hi,v)); }
+
+// ── BACKGROUND LOOP ───────────────────────────────────────────
+function bgLoop(t) {
+  animT = t;
+  // Only draw background if not in AP animation
+  if (G.state !== 'firing') {
+    bgCtx.clearRect(0, 0, bgCvs.width, bgCvs.height);
+    // subtle particle pulse around slots
+    const lvl = LEVELS[G.lvlIdx];
+    if (lvl) {
+      for (let i = 0; i < lvl.numSlots; i++) {
+        if (!G.slots[i]) continue;
+        const el = document.getElementById(`slot-${i}`);
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        const cx = r.left + r.width/2, cy = r.top + r.height/2;
+        const pulse = Math.sin(t * .002 + i) * .5 + .5;
+        bgCtx.save();
+        bgCtx.shadowColor = '#4FC3F7'; bgCtx.shadowBlur = 8 + pulse * 12;
+        bgCtx.strokeStyle = `rgba(79,195,247,${.04 + pulse * .06})`;
+        bgCtx.lineWidth = 1;
+        bgCtx.beginPath(); bgCtx.arc(cx, cy, r.width/2 + 6 + pulse*4, 0, Math.PI*2); bgCtx.stroke();
+        bgCtx.restore();
+      }
+    }
+  }
+  requestAnimationFrame(bgLoop);
+}
+
+// ── TIMER ─────────────────────────────────────────────────────
+let timerInterval = null;
+function startTimer() {
+  stopTimer();
+  timerInterval = setInterval(() => {
+    if (G.state !== 'idle') return;
+    G.levelTime += 0.25;
+    const remaining = Math.max(0, G.timerMax - G.levelTime);
+    const ratio = clamp(remaining / G.timerMax, 0, 1);
+    document.getElementById('timerFill').style.width = (ratio * 100) + '%';
+    const secs = Math.ceil(remaining);
+    const m = Math.floor(secs/60), s = secs%60;
+    document.getElementById('timerVal').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+  }, 250);
+}
+function stopTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+// ── SHEET ─────────────────────────────────────────────────────
+function showSheet(icon, title, body, btns) {
+  document.getElementById('sheetIcon').textContent  = icon;
+  document.getElementById('sheetTitle').textContent = title;
+  document.getElementById('sheetBody').innerHTML    = body;
+  const bEl = document.getElementById('sheetBtns');
   bEl.innerHTML = '';
-
-  q.opts.forEach((opt, i) => {
+  btns.forEach(b => {
     const btn = document.createElement('button');
-    btn.className = 'ans-btn';
-    btn.textContent = opt;
-    btn.onclick = () => {
-      if (G.quizAnswered) return;
-      G.quizAnswered = true;
-      const correct = (i === q.ans);
-      btn.classList.add(correct ? 'correct' : 'wrong');
-      bEl.querySelectorAll('.ans-btn').forEach((b,j)=>{
-        if(j!==i) b.classList.add(j===q.ans ? 'correct' : 'dim');
-      });
-
-      document.getElementById('cardBody').innerHTML =
-        `<b>${q.q}</b><br><br>` +
-        (correct ? '✅ <b style="color:#2ECC71">Correct!</b> ' : '❌ <b style="color:#EF5350">Not quite!</b> ') +
-        q.fact;
-
-      if (correct) { G.score += 150; updateUI(); spawnBurst(W()/2, H()/2, '#2ECC71', 20, .14); feedback(W()/2, H()*.35, '+150 Correct!', '#2ECC71'); }
-      else         { G.score = Math.max(0, G.score - 30); updateUI(); feedback(W()/2, H()*.35, '−30', '#EF5350'); }
-
-      const cont = document.createElement('button');
-      cont.className='cont-btn'; cont.textContent='Continue!';
-      cont.onclick=()=>{ closeCard(); G.state='idle'; };
-      bEl.innerHTML=''; bEl.appendChild(cont);
-    };
+    btn.className = `sheet-btn ${b.cls||''}`;
+    btn.textContent = b.label;
+    btn.onclick = b.action;
     bEl.appendChild(btn);
   });
-  openCard();
+  document.getElementById('sheet').classList.add('open');
+}
+function closeSheet() { document.getElementById('sheet').classList.remove('open'); }
+
+// ── FINAL SCORE ───────────────────────────────────────────────
+function showFinal() {
+  closeSheet();
+  showSheet('🏆', 'You completed all 8 circuits!',
+    `<strong style="color:#FFD700;font-size:22px">Final Score: ${G.score.toLocaleString()}</strong><br><br>
+     You just built every major neural pathway in the human nervous system — from the knee-jerk reflex to the full sensorimotor loop.<br><br>
+     <em style="color:#66BB6A">Every thought, feeling, and movement you've ever had is these same neurons, these same molecules, firing in sequence.</em>`,
+    [{ label:'Play Again', cls:'green', action:restartAll }]
+  );
 }
 
-function showSpecialCard(sp) {
-  document.getElementById('cardIcon').textContent  = sp.icon;
-  document.getElementById('cardTitle').textContent = sp.label;
-  document.getElementById('cardBody').innerHTML    = sp.body;
-  const bEl = document.getElementById('cardBtns');
-  bEl.innerHTML = '';
-  const cont = document.createElement('button');
-  cont.className = 'cont-btn';
-
-  if (sp.effect === 'roll_again') {
-    cont.textContent = '☕ Roll again!';
-    cont.onclick = () => { closeCard(); G.state='idle'; rollDice(); };
-  } else if (sp.effect === 'skip_turn') {
-    G.skipTurn = true;
-    cont.textContent = '😴 Skip next turn...';
-    cont.onclick = () => { closeCard(); G.state='idle'; };
-  } else if (sp.effect === 'move_forward') {
-    const dest = Math.min(G.pos + 3, TOTAL);
-    cont.textContent = `⚡ Surge to square ${dest}!`;
-    cont.onclick = () => { closeCard(); animateJump(G.pos, dest, '#FFD700'); };
-  } else if (sp.effect === 'move_back') {
-    const dest = Math.max(G.pos - 2, 1);
-    cont.textContent = `😮 Move back to square ${dest}`;
-    cont.onclick = () => { closeCard(); animateJump(G.pos, dest, '#80DEEA', true); };
-  }
-
-  bEl.appendChild(cont);
-  openCard();
-}
-
-function animateJump(fromSq, toSq, color, isBack=false) {
-  G.state = 'moving';
-  const a = sqPos(fromSq), b = sqPos(toSq);
-  const start = performance.now();
-  const duration = 900;
-
-  spawnBurst(a.x, a.y, color, 18, .15);
-  setTimeout(() => spawnBurst(b.x, b.y, color, 22, .16), duration*.8);
-
-  function animFrame(now) {
-    const tt = clamp((now-start)/duration, 0, 1);
-    const ease = tt<.5 ? 2*tt*tt : -1+(4-2*tt)*tt;
-    G.tokenX = lerp(a.x, b.x, ease);
-    G.tokenY = lerp(a.y, b.y, ease) - Math.sin(tt*Math.PI)*60;
-    if (tt < 1) { requestAnimationFrame(animFrame); }
-    else {
-      G.pos = toSq;
-      G.tokenX = b.x; G.tokenY = b.y;
-      updateUI();
-      if (toSq === TOTAL) { showWin(); return; }
-      G.state = 'idle';
-      document.getElementById('rollBtn').disabled = false;
-      setInfo(isBack ? `You landed on square ${toSq}. Roll to continue!` : `You jumped to square ${toSq}! Roll to continue!`);
-    }
-  }
-  requestAnimationFrame(animFrame);
-}
-
-function openCard()  {
-  document.getElementById('card').classList.add('open');
-  document.getElementById('rollBtn').disabled = true;
-}
-function closeCard() {
-  document.getElementById('card').classList.remove('open');
-  document.getElementById('rollBtn').disabled = false;
-}
-
-function showWin() {
-  G.state = 'paused';
-  const el = document.getElementById('winScreen');
-  el.style.display = 'flex';
-  document.getElementById('winScore').textContent = `Score: ${G.score.toLocaleString()}`;
-  spawnBurst(W()/2, H()/2, '#FFD700', 40, .2);
-  setTimeout(() => spawnBurst(W()/2, H()/2, '#4FC3F7', 30, .18), 300);
-  setTimeout(() => spawnBurst(W()/2, H()/2, '#CE93D8', 30, .16), 600);
-}
-
-function restartGame() {
-  document.getElementById('winScreen').style.display = 'none';
-  G.pos = 1; G.score = 0; G.state = 'idle'; G.skipTurn = false;
-  const p = sqPos(1); G.tokenX = p.x; G.tokenY = p.y;
-  updateUI(); setInfo('Game restarted! Roll to begin.');
-  document.getElementById('rollBtn').disabled = false;
-}
-
-function startGame() {
-  document.getElementById('menu').style.display = 'none';
-  const p = sqPos(1); G.tokenX = p.x; G.tokenY = p.y;
-  updateUI(); G.state = 'idle';
-  document.getElementById('rollBtn').disabled = false;
-  setInfo('Roll the dice to send your action potential!');
+function restartAll() {
+  closeSheet();
+  G.score = 0; G.levelsComplete = [];
+  updateScore(); updateProgDots();
+  loadLevel(0);
 }
 
 // ── UI HELPERS ────────────────────────────────────────────────
-function updateUI() {
-  document.getElementById('scoreVal').textContent  = G.score.toLocaleString();
-  document.getElementById('squareNum').textContent = `${G.pos} / ${TOTAL}`;
+function updateScore()    { document.getElementById('scoreVal').textContent = G.score.toLocaleString(); }
+function updateProgDots() {
+  const el = document.getElementById('progRow');
+  el.innerHTML = '';
+  LEVELS.forEach((_, i) => {
+    const d = document.createElement('div'); d.className = 'pdot';
+    if (G.levelsComplete.includes(i)) d.classList.add('done');
+    else if (i === G.lvlIdx) d.classList.add('current');
+    el.appendChild(d);
+  });
 }
-function setInfo(txt) { document.getElementById('infoBox').innerHTML = txt; }
-function feedback(x,y,txt,col) {
-  const el = document.createElement('div'); el.className='fb';
-  el.style.cssText=`left:${x}px;top:${y}px;color:${col};text-shadow:0 0 8px ${col};transform:translateX(-50%)`;
-  el.textContent=txt; document.body.appendChild(el);
-  setTimeout(()=>el.remove(),1100);
+function feedback(x, y, txt, col) {
+  const el = document.createElement('div'); el.className = 'fb';
+  el.style.cssText = `left:${x}px;top:${y}px;color:${col};text-shadow:0 0 8px ${col}`;
+  el.textContent = txt; document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1100);
 }
 
-// ── INIT ──────────────────────────────────────────────────────
-const initP = sqPos(1);
-G.tokenX = initP.x; G.tokenY = initP.y;
-requestAnimationFrame(loop);
+// ── START ─────────────────────────────────────────────────────
+function startGame() {
+  document.getElementById('menu').style.display = 'none';
+  loadLevel(0);
+  startTimer();
+}
+
+requestAnimationFrame(bgLoop);
 </script>
 </body>
 </html>
