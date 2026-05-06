@@ -3,10 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>SYNAPSE — Neural Circuit Game</title>
+<title>NEURON — The Brain Board Game</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
+* { margin:0; padding:0; box-sizing:border-box; }
 body {
   background: #020208;
   min-height: 100vh;
@@ -14,178 +13,178 @@ body {
   overflow: hidden;
   color: #e0e0f0;
   user-select: none;
-}
-
-canvas {
-  display: block;
   touch-action: none;
 }
+canvas { display: block; position: fixed; inset: 0; }
 
 /* ── TOP BAR ── */
 #topbar {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  height: 54px;
-  background: linear-gradient(180deg, rgba(2,2,10,0.98) 60%, transparent);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 18px;
-  z-index: 20;
-  pointer-events: none;
+  position: fixed; top:0; left:0; right:0; height:52px;
+  background: linear-gradient(180deg,rgba(2,2,10,.97) 60%,transparent);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px; z-index: 20; pointer-events: none;
 }
-#levelTag  { font-size: 10px; letter-spacing: 3px; color: #4FC3F7; text-transform: uppercase; }
-#levelName { font-size: 15px; color: #90CAF9; font-weight: bold; }
-#scoreBox  { text-align: center; }
-#scoreLabel{ font-size: 9px; color: #37474F; letter-spacing: 2px; }
-#scoreval  { font-size: 22px; font-weight: bold; color: #FFD700; text-shadow: 0 0 10px rgba(255,215,0,.5); }
-#rightBox  { text-align: right; min-width: 80px; }
-#combo     { font-size: 12px; color: #FF6B35; min-height: 16px; text-shadow: 0 0 8px rgba(255,107,53,.7); }
-#timerVal  { font-size: 13px; color: #546E7A; }
+#gameTitle { font-size:18px; letter-spacing:4px; color:#4FC3F7; text-shadow: 0 0 14px rgba(79,195,247,.5); }
+#scoreBox  { text-align:center; }
+#scoreLbl  { font-size:9px; color:#37474F; letter-spacing:2px; }
+#scoreVal  { font-size:20px; font-weight:bold; color:#FFD700; text-shadow: 0 0 8px rgba(255,215,0,.5); }
+#squareLbl { font-size:11px; color:#546E7A; text-align:right; }
+#squareNum { font-size:16px; color:#90CAF9; text-align:right; font-weight:bold; }
 
-/* ── TIMER BAR ── */
-#timerBar  { position: fixed; top: 54px; left: 0; right: 0; height: 3px; background: rgba(255,255,255,.05); z-index: 20; }
-#timerFill { height: 100%; background: linear-gradient(90deg,#2ECC71,#F39C12,#E74C3C); transition: width .1s linear; }
-
-/* ── BOTTOM STRIP ── */
-#bottomStrip {
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  padding: 10px 18px 14px;
-  background: linear-gradient(0deg, rgba(2,2,10,.98) 60%, transparent);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+/* ── BOTTOM CONTROLS ── */
+#controls {
+  position: fixed; bottom:0; left:0; right:0;
+  padding: 12px 16px 16px;
+  background: linear-gradient(0deg,rgba(2,2,10,.98) 60%,transparent);
+  display: flex; align-items: center; justify-content: space-between; gap:12px;
   z-index: 20;
 }
-#instruction {
-  font-size: 12px;
-  color: #37474F;
+#infoBox {
   flex: 1;
+  font-size: 12px; color: #546E7A; line-height: 1.5;
+  max-width: 55%;
 }
-#hintBtn {
-  background: rgba(255,193,7,.08);
-  border: 1px solid rgba(255,193,7,.3);
-  color: #FFC107;
-  padding: 8px 16px;
-  border-radius: 6px;
+#diceArea { display:flex; align-items:center; gap:10px; }
+#dice {
+  width:56px; height:56px;
+  border-radius:12px;
+  background: rgba(79,195,247,.1);
+  border: 2px solid rgba(79,195,247,.3);
+  display: flex; align-items:center; justify-content:center;
+  font-size: 26px;
   cursor: pointer;
-  font-family: inherit;
-  font-size: 12px;
-  white-space: nowrap;
+  transition: transform .15s, box-shadow .15s;
+  pointer-events: all;
+  color: #4FC3F7;
+  text-shadow: 0 0 8px rgba(79,195,247,.6);
 }
-#hintBtn:hover { background: rgba(255,193,7,.18); }
-#fireBtn {
+#dice:hover:not(.disabled) { transform:scale(1.1); box-shadow: 0 0 18px rgba(79,195,247,.4); }
+#dice.disabled { opacity:.4; cursor:not-allowed; pointer-events:none; }
+#dice.rolling  { animation: diceRoll .4s ease-in-out; }
+@keyframes diceRoll { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-20deg) scale(1.15)} 75%{transform:rotate(20deg) scale(1.15)} }
+#rollBtn {
   background: rgba(46,204,113,.12);
   border: 2px solid #2ECC71;
   color: #2ECC71;
-  padding: 9px 22px;
-  border-radius: 7px;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: bold;
-  letter-spacing: 2px;
-  display: none;
-  animation: firePulse 1.2s ease-in-out infinite;
-}
-@keyframes firePulse {
-  0%,100% { box-shadow: 0 0 8px rgba(46,204,113,.4); }
-  50%      { box-shadow: 0 0 24px rgba(46,204,113,.9), 0 0 44px rgba(46,204,113,.2); }
-}
-
-/* ── OSCILLOSCOPE ── */
-#oscWrap {
-  position: fixed;
-  bottom: 56px; left: 14px;
-  z-index: 19;
-}
-#oscLbl { font-size: 9px; color: #1B5E20; letter-spacing: 1px; margin-bottom: 3px; }
-#oscCvs { border: 1px solid rgba(0,200,83,.2); border-radius: 4px; background: rgba(0,0,0,.6); display: block; }
-
-/* ── LEVEL PROGRESS ── */
-#progDots { display: flex; gap: 4px; }
-.pdot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.1); }
-.pdot.done    { background: #2ECC71; }
-.pdot.current { background: #4FC3F7; }
-
-/* ── OVERLAY ── */
-#overlay {
-  position: fixed; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  z-index: 50;
-  background: rgba(2,2,10,.85);
-  backdrop-filter: blur(4px);
-}
-#card {
-  background: linear-gradient(160deg,rgba(10,10,30,.98),rgba(5,5,20,.98));
-  border: 1px solid rgba(100,181,246,.2);
-  border-radius: 16px;
-  padding: 34px 42px;
-  text-align: center;
-  max-width: 520px; width: 90%;
-  box-shadow: 0 0 60px rgba(100,181,246,.08);
-}
-#card h1 { font-size: 30px; letter-spacing: 6px; color: #4FC3F7; text-shadow: 0 0 20px rgba(79,195,247,.6); margin-bottom: 4px; }
-#card .sub { font-size: 11px; letter-spacing: 3px; color: #37474F; margin-bottom: 22px; }
-#card h2 { font-size: 20px; color: #64B5F6; margin-bottom: 10px; }
-#cardBody { font-size: 13px; line-height: 1.75; color: #78909C; margin-bottom: 16px; }
-#cardFact {
-  background: rgba(0,60,30,.25);
-  border: 1px solid rgba(102,187,106,.2);
+  padding: 12px 20px;
   border-radius: 8px;
-  padding: 11px 15px;
-  font-size: 12px; color: #66BB6A; line-height: 1.6;
-  margin-bottom: 18px; text-align: left; display: none;
-}
-#cardFact::before { content: '🧬  '; }
-#cardScore { font-size: 26px; color: #FFD700; font-weight: bold; margin-bottom: 6px; display: none; text-shadow: 0 0 12px rgba(255,215,0,.5); }
-#cardStars { font-size: 26px; margin-bottom: 14px; display: none; }
-#cardBtns  { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-
-.btn {
-  background: rgba(79,195,247,.1);
-  border: 1px solid rgba(79,195,247,.35);
-  color: #4FC3F7;
-  padding: 10px 28px;
-  border-radius: 7px;
   cursor: pointer;
   font-family: inherit;
   font-size: 13px;
+  font-weight: bold;
   letter-spacing: 1px;
+  pointer-events: all;
+  white-space: nowrap;
   transition: all .2s;
 }
-.btn:hover { background: rgba(79,195,247,.22); box-shadow: 0 0 14px rgba(79,195,247,.3); }
-.btn.sec   { border-color: rgba(239,83,80,.35); color: #EF5350; background: rgba(239,83,80,.08); }
-.btn.sec:hover { background: rgba(239,83,80,.18); }
+#rollBtn:hover:not(:disabled) { background:rgba(46,204,113,.25); box-shadow:0 0 16px rgba(46,204,113,.4); }
+#rollBtn:disabled { opacity:.35; cursor:not-allowed; }
 
-/* ── TOOLTIP ── */
-#tip {
-  position: fixed;
-  background: rgba(2,2,10,.97);
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 8px;
-  padding: 9px 13px;
-  font-size: 11px; line-height: 1.6;
-  pointer-events: none;
-  display: none;
-  max-width: 220px;
-  z-index: 200;
-  color: #90A4AE;
+/* ── QUIZ / EVENT OVERLAY ── */
+#overlay {
+  position: fixed; inset:0;
+  display: flex; align-items:flex-end; justify-content:center;
+  z-index: 50; pointer-events: none;
+  padding-bottom: 0;
 }
-#tip strong { display: block; font-size: 13px; margin-bottom: 3px; }
+#card {
+  background: linear-gradient(160deg,rgba(8,8,28,.99),rgba(4,4,18,.99));
+  border: 1px solid rgba(100,181,246,.25);
+  border-bottom: none;
+  border-radius: 18px 18px 0 0;
+  padding: 24px 24px 28px;
+  width: 100%; max-width: 560px;
+  pointer-events: all;
+  transform: translateY(100%);
+  transition: transform .35s cubic-bezier(.34,1.4,.64,1);
+  box-shadow: 0 -8px 40px rgba(0,0,0,.6);
+}
+#card.open { transform: translateY(0); }
+#cardIcon  { font-size:32px; margin-bottom:8px; }
+#cardTitle { font-size:17px; color:#4FC3F7; margin-bottom:8px; font-weight:bold; }
+#cardBody  { font-size:13px; color:#78909C; line-height:1.7; margin-bottom:16px; }
+#cardBtns  { display:flex; gap:8px; flex-wrap:wrap; }
+.ans-btn {
+  flex: 1; min-width: 130px;
+  padding: 12px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(79,195,247,.3);
+  background: rgba(79,195,247,.08);
+  color: #4FC3F7;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .18s;
+  text-align: center;
+  line-height: 1.3;
+}
+.ans-btn:hover { background:rgba(79,195,247,.2); box-shadow:0 0 12px rgba(79,195,247,.3); }
+.ans-btn.correct { background:rgba(46,204,113,.25)!important; border-color:#2ECC71!important; color:#2ECC71!important; box-shadow:0 0 16px rgba(46,204,113,.4); }
+.ans-btn.wrong   { background:rgba(239,83,80,.2)!important;  border-color:#EF5350!important; color:#EF5350!important; }
+.ans-btn.dim     { opacity:.35; pointer-events:none; }
+.cont-btn {
+  width:100%; padding:12px;
+  border-radius:8px; border:1px solid rgba(79,195,247,.3);
+  background:rgba(79,195,247,.1); color:#4FC3F7;
+  font-family:inherit; font-size:13px; cursor:pointer;
+  margin-top:10px; transition:all .18s; letter-spacing:1px;
+}
+.cont-btn:hover { background:rgba(79,195,247,.22); }
+
+/* ── MENU OVERLAY ── */
+#menu {
+  position: fixed; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  background: rgba(2,2,10,.88); backdrop-filter:blur(5px);
+  z-index: 60;
+}
+#menuCard {
+  background: linear-gradient(160deg,rgba(10,10,30,.98),rgba(5,5,20,.98));
+  border: 1px solid rgba(100,181,246,.2);
+  border-radius:16px;
+  padding: 36px 40px;
+  text-align:center; max-width:500px; width:90%;
+  box-shadow: 0 0 60px rgba(100,181,246,.08);
+}
+#menuCard h1 { font-size:28px; letter-spacing:5px; color:#4FC3F7; text-shadow:0 0 20px rgba(79,195,247,.6); margin-bottom:4px; }
+#menuCard .sub { font-size:11px; letter-spacing:3px; color:#37474F; margin-bottom:20px; }
+#menuCard p { font-size:13px; color:#78909C; line-height:1.75; margin-bottom:20px; }
+.legend { display:flex; flex-direction:column; gap:8px; margin-bottom:22px; text-align:left; }
+.leg-row { display:flex; align-items:center; gap:10px; font-size:12px; color:#90A4AE; }
+.leg-icon { font-size:20px; width:28px; text-align:center; }
+.start-btn {
+  background:rgba(46,204,113,.12); border:2px solid #2ECC71;
+  color:#2ECC71; padding:13px 36px; border-radius:8px;
+  cursor:pointer; font-family:inherit; font-size:15px; font-weight:bold;
+  letter-spacing:2px; transition:all .2s;
+  animation: glowPulse 1.5s ease-in-out infinite;
+}
+@keyframes glowPulse {
+  0%,100%{box-shadow:0 0 8px rgba(46,204,113,.3)}
+  50%{box-shadow:0 0 22px rgba(46,204,113,.7),0 0 40px rgba(46,204,113,.2)}
+}
+.start-btn:hover { background:rgba(46,204,113,.25); }
 
 /* feedback floaties */
-.fb {
-  position: fixed; pointer-events: none;
-  font-weight: bold; font-size: 17px; z-index: 100;
-  animation: floatUp 1.1s ease-out forwards;
+.fb { position:fixed; pointer-events:none; font-weight:bold; font-size:17px; z-index:100;
+      animation: floatUp 1.2s ease-out forwards; }
+@keyframes floatUp { 0%{opacity:1;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-60px) scale(1.15)} }
+
+/* ── WIN SCREEN ── */
+#winScreen {
+  position:fixed; inset:0;
+  display:none; align-items:center; justify-content:center;
+  background:rgba(2,2,10,.92); backdrop-filter:blur(6px); z-index:70;
 }
-@keyframes floatUp {
-  0%   { opacity: 1; transform: translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateY(-55px) scale(1.15); }
+#winCard {
+  background:linear-gradient(160deg,rgba(10,10,30,.99),rgba(5,5,20,.99));
+  border:1px solid rgba(255,215,0,.3); border-radius:16px;
+  padding:36px 40px; text-align:center; max-width:460px; width:90%;
+  box-shadow:0 0 60px rgba(255,215,0,.12);
 }
+#winCard h2 { font-size:26px; color:#FFD700; letter-spacing:3px; text-shadow:0 0 20px rgba(255,215,0,.5); margin-bottom:10px; }
+#winCard p  { font-size:13px; color:#78909C; line-height:1.7; margin-bottom:18px; }
+#winScore   { font-size:30px; color:#FFD700; font-weight:bold; margin-bottom:12px; text-shadow:0 0 12px rgba(255,215,0,.5); }
 </style>
 </head>
 <body>
@@ -193,1018 +192,870 @@ canvas {
 
 <div id="topbar">
   <div>
-    <div id="levelTag">LEVEL 1</div>
-    <div id="levelName">Knee-Jerk Reflex</div>
+    <div id="gameTitle">NEURON</div>
+    <div style="font-size:9px;color:#37474F;letter-spacing:2px;">BRAIN BOARD GAME</div>
   </div>
   <div id="scoreBox">
-    <div id="scoreLabel">SCORE</div>
-    <div id="scoreval">0</div>
+    <div id="scoreLbl">SCORE</div>
+    <div id="scoreVal">0</div>
   </div>
-  <div id="rightBox">
-    <div id="combo"></div>
-    <div id="timerVal">0:45</div>
-    <div id="progDots"></div>
+  <div>
+    <div id="squareLbl">SQUARE</div>
+    <div id="squareNum">1 / 36</div>
   </div>
 </div>
-<div id="timerBar"><div id="timerFill"></div></div>
 
-<div id="oscWrap">
-  <div id="oscLbl">MEMBRANE POTENTIAL</div>
-  <canvas id="oscCvs" width="180" height="66"></canvas>
-</div>
-
-<div id="bottomStrip">
-  <div id="instruction">Drag from a neuron to connect it to another</div>
-  <button id="hintBtn" onclick="useHint()">💡 Hint (−50)</button>
-  <button id="fireBtn" onclick="fireCircuit()">⚡ FIRE!</button>
+<div id="controls">
+  <div id="infoBox">Click ROLL to fire your action potential!</div>
+  <div id="diceArea">
+    <div id="dice">⚡</div>
+    <button id="rollBtn" onclick="rollDice()">ROLL</button>
+  </div>
 </div>
 
 <div id="overlay">
   <div id="card">
-    <h1>SYNAPSE</h1>
-    <div class="sub">NEURAL CIRCUIT PUZZLE</div>
-    <h2 id="cardTitle" style="display:none"></h2>
-    <div id="cardBody">
-      Drag connections between neurons to build the correct neural circuit.<br><br>
-      Each neuron shows what it <span style="color:#FFD700">releases ↑</span> and what it <span style="color:#80DEEA">accepts ↓</span>.<br>
-      A synapse only forms when they <strong style="color:#2ECC71">match</strong>.<br><br>
-      Connect <span style="color:#EF9A9A">SOURCE</span> → <span style="color:#81C784">TARGET</span> through the correct pathway!
-    </div>
-    <div id="cardFact"></div>
-    <div id="cardScore"></div>
-    <div id="cardStars"></div>
-    <div id="cardBtns">
-      <button class="btn" onclick="startGame()">START GAME</button>
-    </div>
+    <div id="cardIcon">🧠</div>
+    <div id="cardTitle"></div>
+    <div id="cardBody"></div>
+    <div id="cardBtns"></div>
   </div>
 </div>
 
-<div id="tip"></div>
+<div id="menu">
+  <div id="menuCard">
+    <h1>NEURON</h1>
+    <div class="sub">THE BRAIN BOARD GAME</div>
+    <p>Race your action potential from a nerve ending all the way to the brain — and back to the muscles!</p>
+    <div class="legend">
+      <div class="leg-row"><span class="leg-icon">⚡</span><span>Roll the dice and move your signal forward</span></div>
+      <div class="leg-row"><span class="leg-icon" style="color:#4FC3F7">🔼</span><span><b style="color:#4FC3F7">Myelinated axons</b> — answer right to jump ahead!</span></div>
+      <div class="leg-row"><span class="leg-icon" style="color:#EF9A9A">🔽</span><span><b style="color:#EF9A9A">GABA inhibition</b> — get it wrong and slide back!</span></div>
+      <div class="leg-row"><span class="leg-icon" style="color:#FFC107">❓</span><span><b style="color:#FFC107">Quiz squares</b> — fun brain questions for bonus points</span></div>
+      <div class="leg-row"><span class="leg-icon" style="color:#CE93D8">✨</span><span><b style="color:#CE93D8">Special squares</b> — surprises along the way</span></div>
+    </div>
+    <button class="start-btn" onclick="startGame()">START GAME</button>
+  </div>
+</div>
+
+<div id="winScreen">
+  <div id="winCard">
+    <h2>🧠 SIGNAL COMPLETE!</h2>
+    <p>Your action potential traveled the entire nervous system — from receptor to muscle. You've mastered the brain!</p>
+    <div id="winScore"></div>
+    <p style="font-size:11px;color:#37474F">Fun fact: This journey takes about 50–100 milliseconds in a real nervous system.</p>
+    <button class="start-btn" onclick="restartGame()" style="margin-top:12px">PLAY AGAIN</button>
+  </div>
+</div>
 
 <script>
 // ══════════════════════════════════════════════════════════════
-//  SYNAPSE  —  Neural Circuit Puzzle Game  (drag-to-connect)
+//  NEURON — The Brain Board Game
+//  Snakes & Ladders meets Neurophysiology
 // ══════════════════════════════════════════════════════════════
 
 const cvs = document.getElementById('c');
 const ctx = cvs.getContext('2d');
-const oscCvs = document.getElementById('oscCvs');
-const oscCtx = oscCvs.getContext('2d');
-
 function resize() { cvs.width = innerWidth; cvs.height = innerHeight; }
-resize();
-addEventListener('resize', resize);
+resize(); addEventListener('resize', () => { resize(); });
 
 const W = () => cvs.width, H = () => cvs.height;
-const CX = () => W()/2;
-const TOP = 57, BOT = 52;
 
-// ── UTILS ────────────────────────────────────────────────────
-const lerp  = (a,b,t) => a+(b-a)*t;
-const clamp = (v,lo,hi) => Math.max(lo,Math.min(hi,v));
-const dist  = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
-const rand  = (lo,hi) => lo+Math.random()*(hi-lo);
+// ── BOARD CONFIG ──────────────────────────────────────────────
+const GRID = 6;
+const TOTAL = 36;
 
-function hexToRgb(hex) {
-  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
-  return [r,g,b];
+function cellSize() {
+  const maxW = Math.floor((W() - 40) / GRID);
+  const maxH = Math.floor((H() - 160) / GRID);
+  return Math.min(maxW, maxH, 96);
 }
-function rgba(hex,a) { const [r,g,b]=hexToRgb(hex); return `rgba(${r},${g},${b},${a})`; }
-
-// ── NT DATA ──────────────────────────────────────────────────
-const NT = {
-  GLU:  { abbr:'Glu',  name:'Glutamate',      color:'#FFD700', effect:'excitatory',  receptor:'AMPA/NMDA', desc:'Primary excitatory NT. Na⁺ influx → depolarization.' },
-  GABA: { abbr:'GABA', name:'GABA',           color:'#FF6B6B', effect:'inhibitory',  receptor:'GABA-A',    desc:'Primary inhibitory NT. Cl⁻ influx → hyperpolarization.' },
-  ACH:  { abbr:'ACh',  name:'Acetylcholine',  color:'#00CED1', effect:'excitatory',  receptor:'nAChR',     desc:'NMJ transmitter. Triggers muscle contraction.' },
-  DA:   { abbr:'DA',   name:'Dopamine',       color:'#CE93D8', effect:'modulatory',  receptor:'D1/D2',     desc:'Reward & motor modulator. D1 excitatory, D2 inhibitory.' },
-  SP:   { abbr:'SP',   name:'Substance P',    color:'#FF69B4', effect:'excitatory',  receptor:'NK1',       desc:'Pain amplifier. Released by C-fibers at dorsal horn.' },
-  NE:   { abbr:'NE',   name:'Norepinephrine', color:'#FFA040', effect:'excitatory',  receptor:'α₁/β₁',    desc:'Fight-or-flight. Increases HR & alertness.' },
-  SERO: { abbr:'5-HT', name:'Serotonin',      color:'#69FF69', effect:'modulatory',  receptor:'5-HT₁/₂',  desc:'Mood regulator. Low levels linked to depression.' },
-};
-
-// ── NEURON TYPE COLORS ───────────────────────────────────────
-const NTYPE = {
-  SENSORY:    { color:'#4FC3F7', label:'Sensory' },
-  INTER:      { color:'#CE93D8', label:'Interneuron' },
-  MOTOR:      { color:'#81C784', label:'Motor' },
-  INHIBITORY: { color:'#EF9A9A', label:'Inhibitory' },
-  RELAY:      { color:'#80DEEA', label:'Relay' },
-  DOPAMINE:   { color:'#CE93D8', label:'Dopaminergic' },
-  CORTICAL:   { color:'#FFCC02', label:'Cortical' },
-  MUSCLE:     { color:'#A5D6A7', label:'Muscle Fiber' },
-};
-
-// ── PARTICLES ────────────────────────────────────────────────
-const particles = [];
-function spawnBurst(x,y,color,n=14,spd=0.13) {
-  for(let i=0;i<n;i++){
-    const a=(Math.PI*2*i/n)+rand(-0.3,0.3), s=spd*rand(0.5,1.5);
-    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,color,life:rand(400,900),max:900,size:rand(2,4)});
-  }
-}
-function spawnVesicles(x1,y1,x2,y2,color,n=18){
-  for(let i=0;i<n;i++){
-    const t=rand(0,1), px=lerp(x1,x2,t)+rand(-6,6), py=lerp(y1,y2,t)+rand(-6,6);
-    const d=Math.hypot(x2-x1,y2-y1);
-    particles.push({x:px,y:py,vx:(x2-x1)/d*rand(.03,.1),vy:(y2-y1)/d*rand(.03,.1),color,life:rand(500,1300),max:1300,size:rand(1.5,3)});
-  }
-}
-function updateParticles(dt){
-  for(let i=particles.length-1;i>=0;i--){
-    const p=particles[i];
-    p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=0.018*dt/16; p.life-=dt;
-    if(p.life<=0) particles.splice(i,1);
-  }
-}
-function drawParticles(){
-  for(const p of particles){
-    const a=clamp(p.life/p.max,0,1);
-    ctx.save(); ctx.globalAlpha=a;
-    ctx.shadowColor=p.color; ctx.shadowBlur=6;
-    ctx.fillStyle=p.color;
-    ctx.beginPath(); ctx.arc(p.x,p.y,p.size*a,0,Math.PI*2); ctx.fill();
-    ctx.restore();
-  }
-}
-
-// ── NEURON CLASS ─────────────────────────────────────────────
-class Neuron {
-  constructor(cfg){
-    Object.assign(this, {
-      id:'', type:'INTER', label:'', sublabel:'',
-      releases:null, accepts:null,
-      isSource:false, isTarget:false, isDistractor:false,
-      r:33, pulse:0, fired:false, fireT:0,
-    }, cfg);
-    // position set by level loader from (fx,fy)
-  }
-  get tc(){ return NTYPE[this.type]||NTYPE.INTER; }
-  update(t){ this.pulse=Math.sin(t*.0014+this.x*.009)*.5+.5; }
-
-  draw(t){
-    const {x,y,r} = this;
-    const col = this.tc.color;
-    const fireAmt = this.fired ? clamp(1-(t-this.fireT)/900,0,1) : 0;
-    const breath = 1 + this.pulse*.045;
-
-    ctx.save();
-    // outer glow
-    ctx.shadowColor = col;
-    ctx.shadowBlur = 16 + this.pulse*8 + fireAmt*38;
-
-    // cell body
-    const g = ctx.createRadialGradient(x-r*.28,y-r*.28,0, x,y, r*breath);
-    g.addColorStop(0, rgba(col, .52+fireAmt*.38));
-    g.addColorStop(.6, rgba(col, .16+fireAmt*.22));
-    g.addColorStop(1, rgba(col, .03));
-    ctx.fillStyle=g;
-    ctx.beginPath(); ctx.arc(x,y,r*breath,0,Math.PI*2); ctx.fill();
-
-    // ring
-    ctx.shadowBlur=0;
-    ctx.strokeStyle=rgba(col,.45+fireAmt*.55);
-    ctx.lineWidth=1.5+fireAmt*2;
-    ctx.beginPath(); ctx.arc(x,y,r*breath,0,Math.PI*2); ctx.stroke();
-
-    // nucleus
-    ctx.shadowColor=col; ctx.shadowBlur=7+fireAmt*18;
-    const ng=ctx.createRadialGradient(x-r*.1,y-r*.1,0, x,y, r*.36);
-    ng.addColorStop(0,rgba(col,.88+fireAmt*.12));
-    ng.addColorStop(1,rgba(col,.18));
-    ctx.fillStyle=ng;
-    ctx.beginPath(); ctx.arc(x,y,r*.36,0,Math.PI*2); ctx.fill();
-
-    // fire ring
-    if(fireAmt>.01){
-      ctx.shadowBlur=18;
-      ctx.strokeStyle=rgba('#FFF',fireAmt*.75);
-      ctx.lineWidth=3;
-      ctx.beginPath(); ctx.arc(x,y,r+(1-fireAmt)*42,0,Math.PI*2); ctx.stroke();
-    }
-    ctx.restore();
-
-    // SOURCE / TARGET badge
-    if(this.isSource || this.isTarget){
-      const bCol = this.isSource ? '#EF9A9A' : '#81C784';
-      const bTxt = this.isSource ? 'SOURCE' : 'TARGET';
-      const pulse2 = Math.sin(t*.002+this.x*.005)*.5+.5;
-      ctx.save();
-      ctx.shadowColor=bCol; ctx.shadowBlur=8+pulse2*10;
-      ctx.strokeStyle=rgba(bCol,.6+pulse2*.4);
-      ctx.lineWidth=2;
-      ctx.setLineDash([4,4]);
-      ctx.beginPath(); ctx.arc(x,y,r+10+pulse2*3,0,Math.PI*2); ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.shadowBlur=0;
-      ctx.fillStyle=bCol;
-      ctx.font='bold 9px Courier New';
-      ctx.textAlign='center';
-      ctx.fillText(bTxt, x, y-r-16);
-      ctx.restore();
-    }
-
-    // NT RELEASE badge (top right of neuron)
-    if(this.releases){
-      this.drawBadge(this.releases, x+r*.65, y-r*.65, true);
-    }
-    // ACCEPTS badge (bottom left)
-    if(this.accepts){
-      this.drawBadge(this.accepts, x-r*.65, y+r*.65, false);
-    }
-
-    // label
-    ctx.save();
-    ctx.font='bold 11px Courier New';
-    ctx.textAlign='center';
-    ctx.fillStyle=rgba(col,.88);
-    ctx.shadowColor=col; ctx.shadowBlur=5;
-    const lines=this.label.split('\n');
-    lines.forEach((l,i)=>ctx.fillText(l,x,y+r+16+i*13));
-    if(this.sublabel){
-      ctx.font='9px Courier New';
-      ctx.fillStyle=rgba(col,.5);
-      ctx.shadowBlur=0;
-      ctx.fillText(this.sublabel,x,y+r+16+lines.length*13+1);
-    }
-    ctx.restore();
-  }
-
-  drawBadge(ntKey, bx, by, isRelease){
-    const nt=NT[ntKey]; if(!nt) return;
-    const r=11;
-    ctx.save();
-    ctx.shadowColor=nt.color; ctx.shadowBlur=isRelease?10:4;
-    ctx.fillStyle=isRelease ? rgba(nt.color,.8) : rgba(nt.color,.08);
-    ctx.strokeStyle=rgba(nt.color, isRelease?.9:.5);
-    ctx.lineWidth=1.5;
-    ctx.beginPath(); ctx.arc(bx,by,r,0,Math.PI*2);
-    ctx.fill(); ctx.stroke();
-    ctx.shadowBlur=0;
-    ctx.fillStyle=isRelease?'#000':nt.color;
-    ctx.font=`bold 8px Courier New`;
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(nt.abbr, bx, by);
-    // tiny arrow
-    ctx.fillStyle=rgba(nt.color,.5);
-    ctx.font='7px Courier New';
-    ctx.fillText(isRelease?'▲':'▼', bx, by+(isRelease?-r-5:r+4));
-    ctx.textBaseline='alphabetic';
-    ctx.restore();
-  }
-
-  fireNow(t){
-    this.fired=true; this.fireT=t;
-    spawnBurst(this.x,this.y,this.tc.color,16,.16);
-  }
-  hit(x,y){ return dist(this,{x,y})<this.r+12; }
-}
-
-// ── CONNECTION CLASS ──────────────────────────────────────────
-class Connection {
-  constructor(pre,post){
-    this.pre=pre; this.post=post;
-    this.id=`${pre.id}-${post.id}`;
-    this.nt=pre.releases;
-    this.birthT=performance.now();
-    this.alpha=0;
-  }
-  get midpoint(){
-    return { x:(this.pre.x+this.post.x)/2, y:(this.pre.y+this.post.y)/2 };
-  }
-  isMidHit(mx,my){ return dist(this.midpoint,{x:mx,y:my})<16; }
-
-  draw(t){
-    const {pre,post,nt}=this;
-    const col=NT[nt]?.color||'#FFF';
-    const age=t-this.birthT;
-    this.alpha=clamp(age/300,0,1);
-
-    const dx=post.x-pre.x, dy=post.y-pre.y;
-    const len=Math.hypot(dx,dy);
-    const ux=dx/len, uy=dy/len;
-    const sx=pre.x+ux*(pre.r+5), sy=pre.y+uy*(pre.r+5);
-    const ex=post.x-ux*(post.r+5), ey=post.y-uy*(post.r+5);
-
-    // curve control point (slight arc)
-    const perp={x:-uy,y:ux};
-    const bulge=Math.min(len*.15,40);
-    const cx2=(sx+ex)/2+perp.x*bulge, cy2=(sy+ey)/2+perp.y*bulge;
-
-    ctx.save();
-    ctx.globalAlpha=this.alpha;
-    ctx.shadowColor=col; ctx.shadowBlur=10;
-    ctx.strokeStyle=rgba(col,.75);
-    ctx.lineWidth=2.5; ctx.lineCap='round';
-    ctx.beginPath();
-    ctx.moveTo(sx,sy);
-    ctx.quadraticCurveTo(cx2,cy2,ex,ey);
-    ctx.stroke();
-    ctx.restore();
-
-    // arrow at 70% along curve
-    if(this.alpha>.5){
-      const at=.7;
-      const ax=lerp(lerp(sx,cx2,at),lerp(cx2,ex,at),at);
-      const ay=lerp(lerp(sy,cy2,at),lerp(cy2,ey,at),at);
-      const tax=lerp(cx2,ex,at)-lerp(sx,cx2,at);
-      const tay=lerp(cy2,ey,at)-lerp(sy,cy2,at);
-      const tl=Math.hypot(tax,tay);
-      drawArrow(ax,ay,tax/tl,tay/tl,col,this.alpha);
-    }
-
-    // delete hotspot
-    const mp=this.midpoint;
-    ctx.save();
-    ctx.globalAlpha=0.25*this.alpha;
-    ctx.strokeStyle='#EF5350'; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.arc(mp.x,mp.y,9,0,Math.PI*2); ctx.stroke();
-    ctx.restore();
-  }
-}
-
-function drawArrow(x,y,ux,uy,col,a=1){
-  const s=7, perp={x:-uy,y:ux};
-  ctx.save();
-  ctx.globalAlpha=a;
-  ctx.shadowColor=col; ctx.shadowBlur=7;
-  ctx.fillStyle=rgba(col,.8);
-  ctx.beginPath();
-  ctx.moveTo(x+ux*s, y+uy*s);
-  ctx.lineTo(x-ux*s+perp.x*s*.55, y-uy*s+perp.y*s*.55);
-  ctx.lineTo(x-ux*s-perp.x*s*.55, y-uy*s-perp.y*s*.55);
-  ctx.closePath(); ctx.fill();
-  ctx.restore();
-}
-
-// ── DRAG WIRE ─────────────────────────────────────────────────
-function drawDragWire(x1,y1,x2,y2,col,t){
-  const dx=x2-x1, dy=y2-y1;
-  const len=Math.hypot(dx,dy); if(len<2) return;
-  const ux=dx/len, uy=dy/len;
-  const perp={x:-uy,y:ux};
-  const bulge=Math.min(len*.15,40);
-  const cx=(x1+x2)/2+perp.x*bulge, cy=(y1+y2)/2+perp.y*bulge;
-
-  ctx.save();
-  ctx.shadowColor=col; ctx.shadowBlur=14;
-  ctx.strokeStyle=rgba(col,.7);
-  ctx.lineWidth=2.5; ctx.lineCap='round';
-  ctx.setLineDash([8,6]);
-  ctx.lineDashOffset=-(t*.04%14);
-  ctx.beginPath();
-  ctx.moveTo(x1,y1);
-  ctx.quadraticCurveTo(cx,cy,x2,y2);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  // endpoint glow
-  ctx.shadowBlur=20;
-  ctx.fillStyle=rgba(col,.55);
-  ctx.beginPath(); ctx.arc(x2,y2,7,0,Math.PI*2); ctx.fill();
-  ctx.restore();
-}
-
-// ── ACTION POTENTIAL TRACER ───────────────────────────────────
-class APTracer {
-  constructor(path){
-    this.path=path; this.segIdx=0; this.segT=0; this.done=false;
-    this.trail=[];
-  }
-  update(dt,t){
-    if(this.done) return;
-    this.segT+=dt*.0019;
-    if(this.segT>=1){
-      this.segT=0; this.segIdx++;
-      if(this.segIdx>=this.path.length-1){
-        this.done=true; this.segIdx=this.path.length-2; this.segT=1; return;
-      }
-      const n=this.path[this.segIdx+1];
-      if(n){ n.fireNow(t);
-        const col=NT[this.path[this.segIdx].releases]?.color||'#FFF';
-        spawnVesicles(this.path[this.segIdx].x,this.path[this.segIdx].y,n.x,n.y,col,18);
-      }
-    }
-    const a=this.path[this.segIdx], b=this.path[this.segIdx+1];
-    if(a&&b){ this.trail.push({x:lerp(a.x,b.x,this.segT),y:lerp(a.y,b.y,this.segT),t}); }
-    if(this.trail.length>28) this.trail.shift();
-  }
-  draw(t){
-    const a=this.path[this.segIdx], b=this.path[this.segIdx+1];
-    if(!a||!b) return;
-    const px=lerp(a.x,b.x,this.segT), py=lerp(a.y,b.y,this.segT);
-    for(const tp of this.trail){
-      const age=t-tp.t, al=clamp(1-age/280,0,1);
-      ctx.save(); ctx.globalAlpha=al*.45;
-      ctx.shadowColor='#FFF'; ctx.shadowBlur=14;
-      ctx.fillStyle='#FFF';
-      ctx.beginPath(); ctx.arc(tp.x,tp.y,4*al,0,Math.PI*2); ctx.fill();
-      ctx.restore();
-    }
-    ctx.save();
-    ctx.shadowColor='#FFF'; ctx.shadowBlur=38;
-    ctx.fillStyle='#FFF';
-    ctx.beginPath(); ctx.arc(px,py,9,0,Math.PI*2); ctx.fill();
-    ctx.shadowBlur=14; ctx.fillStyle='#E3F2FD';
-    ctx.beginPath(); ctx.arc(px,py,5,0,Math.PI*2); ctx.fill();
-    ctx.restore();
-  }
-}
-
-// ── OSCILLOSCOPE ──────────────────────────────────────────────
-const osc = (() => {
-  const data=new Float32Array(180).fill(-70);
-  let pos=0, triggered=false, phase='resting', prog=0;
+function boardOrigin() {
+  const cs = cellSize();
   return {
-    trigger(){ triggered=true; phase='depolarizing'; prog=0; },
-    update(dt){
-      prog+=dt*.006;
-      let v=-70;
-      if(!triggered){ v=-70+(Math.random()-.5)*1.3; }
-      else if(phase==='depolarizing'){ v=lerp(-70,40,clamp(prog/.3,0,1)); if(prog>=.3){phase='repolarizing';prog=0;} }
-      else if(phase==='repolarizing'){ v=lerp(40,-80,clamp(prog/.4,0,1)); if(prog>=.4){phase='hyperpolarizing';prog=0;} }
-      else if(phase==='hyperpolarizing'){ v=lerp(-80,-70,clamp(prog/.3,0,1)); if(prog>=.3){phase='resting';prog=0;triggered=false;} }
-      data[pos%180]=v; pos++;
-    },
-    draw(){
-      const w=180,h=66;
-      oscCtx.clearRect(0,0,w,h);
-      oscCtx.strokeStyle='rgba(0,200,83,.07)'; oscCtx.lineWidth=1;
-      for(let x=0;x<w;x+=36){ oscCtx.beginPath();oscCtx.moveTo(x,0);oscCtx.lineTo(x,h);oscCtx.stroke(); }
-      for(let y=0;y<h;y+=13){ oscCtx.beginPath();oscCtx.moveTo(0,y);oscCtx.lineTo(w,y);oscCtx.stroke(); }
-      const thy=h-((55)/125)*h;
-      oscCtx.strokeStyle='rgba(255,200,0,.18)'; oscCtx.setLineDash([3,3]);
-      oscCtx.beginPath();oscCtx.moveTo(0,thy);oscCtx.lineTo(w,thy);oscCtx.stroke();
-      oscCtx.setLineDash([]);
-      oscCtx.save();
-      oscCtx.shadowColor='#00C853'; oscCtx.shadowBlur=5;
-      oscCtx.strokeStyle='#00E676'; oscCtx.lineWidth=1.5;
-      oscCtx.beginPath();
-      for(let i=0;i<w;i++){
-        const idx=(pos-w+i+data.length)%data.length;
-        const y=h-((data[idx]+80)/125)*h;
-        i===0?oscCtx.moveTo(i,y):oscCtx.lineTo(i,y);
-      }
-      oscCtx.stroke(); oscCtx.restore();
-      oscCtx.fillStyle='rgba(0,200,83,.35)'; oscCtx.font='8px Courier New';
-      oscCtx.fillText('+40',2,8); oscCtx.fillText('-55',2,thy-2); oscCtx.fillText('-70',2,h-3);
-    }
+    x: Math.floor((W() - cs * GRID) / 2),
+    y: Math.floor((H() - cs * GRID) / 2) - 16,
   };
-})();
+}
 
-// ── LEVEL DEFINITIONS ─────────────────────────────────────────
-// Each neuron: id, type, fx(0-1), fy(0-1), releases, accepts, label, sublabel, isSource, isTarget
-// Connection valid when pre.releases === post.accepts
-// Correct path: source → ... → target via matching NT-receptor pairs
-// Distractors: neurons that look tempting but break the chain
+// Square n → grid pixel center
+function sqPos(n) {
+  if (n < 1)  n = 1;
+  if (n > TOTAL) n = TOTAL;
+  const cs = cellSize();
+  const { x: bx, y: by } = boardOrigin();
+  const idx  = n - 1;
+  const row  = Math.floor(idx / GRID);              // 0=bottom
+  const posR = idx % GRID;
+  const col  = (row % 2 === 0) ? posR : (GRID - 1 - posR);
+  return {
+    x: bx + col * cs + cs / 2,
+    y: by + (GRID - 1 - row) * cs + cs / 2,
+  };
+}
 
-const LEVELS = [
+// ── SQUARE TYPE DEFINITIONS ───────────────────────────────────
+// Types: 'normal' | 'ladder_base' | 'ladder_top' | 'snake_head' | 'snake_tail' | 'quiz' | 'special' | 'start' | 'finish'
+const SQUARE_TYPES = {};
+for (let i = 1; i <= TOTAL; i++) SQUARE_TYPES[i] = 'normal';
+SQUARE_TYPES[1]  = 'start';
+SQUARE_TYPES[36] = 'finish';
+
+// LADDERS: base → top  (good — fast conduction!)
+const LADDERS = [
+  { from: 4,  to: 14, label: 'Myelinated Axon!',     icon: '⚡', color: '#4FC3F7' },
+  { from: 9,  to: 22, label: 'Dopamine Surge!',       icon: '🎯', color: '#CE93D8' },
+  { from: 20, to: 31, label: "Long-Term Potentiation!", icon: '🔬', color: '#81C784' },
+];
+// SNAKES: head → tail  (bad — inhibition!)
+const SNAKES = [
+  { from: 17, to: 7,  label: 'GABA Flood!',           icon: '🔴', color: '#EF9A9A' },
+  { from: 28, to: 13, label: 'Refractory Period!',    icon: '⏸',  color: '#FF6B6B' },
+  { from: 33, to: 21, label: 'Opioid Inhibition!',    icon: '🚫', color: '#FF8A65' },
+];
+LADDERS.forEach(l => { SQUARE_TYPES[l.from] = 'ladder_base'; SQUARE_TYPES[l.to] = 'ladder_top'; });
+SNAKES.forEach(s  => { SQUARE_TYPES[s.from] = 'snake_head';  SQUARE_TYPES[s.to] = 'snake_tail'; });
+
+// QUIZ SQUARES
+const QUIZ_SQUARES = [6, 11, 15, 24, 27, 30, 34];
+QUIZ_SQUARES.forEach(q => SQUARE_TYPES[q] = 'quiz');
+
+// SPECIAL SQUARES
+const SPECIAL_SQUARES = {
+  3:  { icon:'☕', color:'#FFA040', label:'Caffeine Boost!',   effect:'roll_again',  body:'Caffeine blocks adenosine — a chemical that makes you sleepy. With adenosine blocked, neurons fire more freely. Roll again!' },
+  13: { icon:'😴', color:'#78909C', label:'Neural Fatigue',    effect:'skip_turn',   body:'Neurons release neurotransmitters from limited vesicle stores. After heavy firing, supplies run low and signals weaken. Skip next turn.' },
+  19: { icon:'💊', color:'#80DEEA', label:'Painkiller!',       effect:'move_back',   body:'Opioid painkillers (like morphine) bind to receptors in the spinal cord and block pain signals. They also cause drowsiness — move back 2 spaces.' },
+  26: { icon:'🏃', color:'#FFD700', label:'Adrenaline Rush!',  effect:'move_forward',body:"Your adrenal glands just flooded your blood with adrenaline (epinephrine)! Heart racing, pupils dilated, muscles primed. Move forward 3 extra spaces!" },
+};
+Object.keys(SPECIAL_SQUARES).forEach(k => SQUARE_TYPES[+k] = 'special');
+
+// SQUARE LABELS (shown on the board)
+const SQUARE_LABELS = {
+  1: 'START', 36: 'FINISH!',
+  4: 'Myelin\n↑', 14: 'Fast\nAxon',
+  9: 'Reward\n↑', 22: 'Dopamine',
+  20: 'LTP ↑', 31: 'Memory',
+  17: 'GABA\n↓', 7:  'Inhibited',
+  28: 'Refract\n↓', 13: 'Refractory',
+  33: 'Opioid\n↓', 21: 'Blocked',
+  3: '☕', 13: '😴', 19: '💊', 26: '🏃',
+  6: '❓', 11: '❓', 15: '❓', 24: '❓', 27: '❓', 30: '❓', 34: '❓',
+};
+
+// NEUROSCIENCE FACTS for regular squares
+const FACTS = [
+  'The brain has about 86 billion neurons — roughly as many as stars in the Milky Way!',
+  'Nerve signals travel at up to 120 m/s (270 mph) in myelinated axons.',
+  'Unmyelinated C-fibers carry slow pain at just 0.5–2 m/s — that\'s why a dull ache follows a sharp sting.',
+  'The synapse gap is only 20 nanometres wide — 5,000 times thinner than a human hair.',
+  'Your brain uses 20% of your body\'s energy despite being only 2% of your weight.',
+  'A single neuron can form up to 10,000 synaptic connections with other neurons.',
+  'Neurons communicate chemically at synapses but electrically along their axons.',
+  'The cerebellum contains 70% of all neurons in the brain despite being the size of a fist.',
+  'Glial cells outnumber neurons 10:1 and provide nutrition, insulation, and cleanup.',
+  'The longest axon in your body runs from your lower spine to your big toe — nearly 1 metre!',
+  'Action potentials follow the "all-or-nothing" rule — partial firing doesn\'t exist.',
+  'REM sleep is when your brain consolidates memories through synaptic plasticity.',
+  'Stress hormones (cortisol) can actually shrink the hippocampus over time.',
+  'Meditation has been shown to physically thicken the prefrontal cortex.',
+  'The vagus nerve connects your gut to your brain — explaining the "gut feeling"!',
+];
+
+// QUIZ QUESTIONS (accessible to everyone)
+const QUESTIONS = [
   {
-    title:'Level 1', name:'Knee-Jerk Reflex',
-    description:'Build the monosynaptic reflex arc. Connect neurons from the muscle spindle to the motor neuron that contracts the muscle. Watch out for the inhibitory Renshaw cell!',
-    fact:'The patellar reflex is MONOSYNAPTIC — only one synapse between sensory and motor neuron. The signal travels at 70 m/s on myelinated Aα fibers, completing the entire arc in ~25ms.',
-    timeLimit:50,
-    neurons:[
-      {id:'N1',type:'SENSORY',   fx:.12,fy:.5, releases:'GLU', accepts:null,  label:'Ia Afferent',   sublabel:'Muscle Spindle', isSource:true},
-      {id:'N2',type:'INTER',     fx:.45,fy:.38,releases:'GLU', accepts:'GLU', label:'Interneuron',   sublabel:'Dorsal Horn'},
-      {id:'N3',type:'MOTOR',     fx:.78,fy:.5, releases:'ACH', accepts:'GLU', label:'α-Motor\nNeuron', sublabel:'Ventral Horn', isTarget:true},
-      // distractors
-      {id:'D1',type:'INHIBITORY',fx:.45,fy:.65,releases:'GABA',accepts:'GLU', label:'Renshaw Cell',  sublabel:'(inhibitory!)',  isDistractor:true},
-      {id:'D2',type:'SENSORY',   fx:.12,fy:.72,releases:'SP',  accepts:null,  label:'Nociceptor',    sublabel:'(wrong pathway)',isDistractor:true},
-    ],
-    source:'N1', target:'N3',
-    solution:['N1','N2','N3'],
+    q: 'Which chemical gives you that feel-good rush of reward?',
+    opts: ['Dopamine', 'GABA', 'Histamine'],
+    ans: 0,
+    fact: 'Dopamine is released by the brain\'s reward circuit (the VTA → Nucleus Accumbens pathway) whenever something is better than expected. It\'s why sugar, likes, and gambling are so compelling!',
   },
   {
-    title:'Level 2', name:'Pain Pathway',
-    description:'Route the pain signal from a nociceptor all the way to the cortex. Substance P amplifies it at the spinal cord. Three different NTs are involved!',
-    fact:'C-fiber pain (burning, aching) reaches the cortex ~1 second after injury — much slower than Aδ sharp pain. This is why you feel a sharp sting first, then a dull ache.',
-    timeLimit:60,
-    neurons:[
-      {id:'N1',type:'SENSORY',  fx:.08,fy:.5,  releases:'SP',  accepts:null,  label:'Nociceptor',   sublabel:'C-fiber',      isSource:true},
-      {id:'N2',type:'INTER',    fx:.33,fy:.42, releases:'GLU', accepts:'SP',  label:'Dorsal Horn',  sublabel:'Spinal Cord'},
-      {id:'N3',type:'RELAY',    fx:.58,fy:.5,  releases:'GLU', accepts:'GLU', label:'Thalamus',     sublabel:'VPL nucleus'},
-      {id:'N4',type:'CORTICAL', fx:.83,fy:.42, releases:null,  accepts:'GLU', label:'Somatosensory\nCortex', sublabel:'S1',  isTarget:true},
-      // distractors
-      {id:'D1',type:'SENSORY',  fx:.08,fy:.72, releases:'GLU', accepts:null,  label:'Touch Fiber',  sublabel:'(Aβ — wrong!)', isDistractor:true},
-      {id:'D2',type:'INHIBITORY',fx:.33,fy:.68,releases:'GABA',accepts:'GLU', label:'Inhibitory IN', sublabel:'(blocks pain!)', isDistractor:true},
-      {id:'D3',type:'INTER',    fx:.58,fy:.72, releases:'GABA',accepts:'SP',  label:'Enkephalin IN', sublabel:'(opioid — wrong!)', isDistractor:true},
-    ],
-    source:'N1', target:'N4',
-    solution:['N1','N2','N3','N4'],
+    q: 'What does the brain\'s natural "brake pedal" neurotransmitter do?',
+    opts: ['Slows things down (inhibitory)', 'Speeds things up (excitatory)', 'Makes you feel pain'],
+    ans: 0,
+    fact: 'GABA (gamma-aminobutyric acid) is the brain\'s main inhibitory neurotransmitter. It calms neural activity — anxiety drugs like Valium and alcohol both work by boosting GABA.',
   },
   {
-    title:'Level 3', name:'Close the Pain Gate',
-    description:'Gate Control Theory: activate the inhibitory interneuron to BLOCK the pain signal. You need to build TWO pathways — one to open the gate, one to close it.',
-    fact:'This is why rubbing a bump reduces pain! Aβ touch fibers → inhibitory interneuron → blocks C-fiber pain relay. Acupuncture and TENS therapy work partly via this gate mechanism.',
-    timeLimit:70,
-    neurons:[
-      {id:'S1',type:'SENSORY',  fx:.1, fy:.32, releases:'GLU', accepts:null,  label:'Touch Fiber',  sublabel:'Aβ (fast)',   isSource:true},
-      {id:'N2',type:'INHIBITORY',fx:.45,fy:.32, releases:'GABA',accepts:'GLU', label:'Inhibitory IN', sublabel:'Gate Keeper'},
-      {id:'N3',type:'INTER',    fx:.78,fy:.32, releases:null,  accepts:'GABA', label:'Pain Relay',   sublabel:'← blocked!', isTarget:true},
-      // pain fiber (show blocked state)
-      {id:'S2',type:'SENSORY',  fx:.1, fy:.65, releases:'SP',  accepts:null,  label:'Pain Fiber',   sublabel:'C-fiber',    isSource:false},
-      {id:'N4',type:'INTER',    fx:.45,fy:.65, releases:'GLU', accepts:'SP',  label:'Dorsal Horn',  sublabel:'converges here'},
-      // distractors
-      {id:'D1',type:'MOTOR',    fx:.78,fy:.65, releases:'ACH', accepts:'GLU', label:'Motor Neuron', sublabel:'(wrong target!)', isDistractor:true},
-    ],
-    source:'S1', target:'N3',
-    solution:['S1','N2','N3'],
+    q: 'Why do myelinated nerves conduct signals faster?',
+    opts: ['Signal jumps between gaps (saltatory conduction)', 'They have more ions', 'They are shorter'],
+    ans: 0,
+    fact: 'Myelin is a fatty insulator that makes the signal "leap" from one Node of Ranvier to the next — called saltatory conduction (from Latin saltare, to jump). It\'s up to 100× faster than unmyelinated fibers!',
   },
   {
-    title:'Level 4', name:'Neuromuscular Junction',
-    description:'The motor neuron uses a DIFFERENT neurotransmitter at the muscle than in the CNS. Find the correct NT for the neuromuscular junction!',
-    fact:'Botox (Botulinum toxin) works by blocking ACh release at the NMJ — muscles can\'t contract, so wrinkles relax. In high doses it causes paralysis; the same mechanism kills in botulism.',
-    timeLimit:55,
-    neurons:[
-      {id:'N1',type:'CORTICAL', fx:.1, fy:.5,  releases:'GLU', accepts:null,  label:'Motor Cortex',  sublabel:'Upper MN',    isSource:true},
-      {id:'N2',type:'MOTOR',    fx:.42,fy:.5,  releases:'ACH', accepts:'GLU', label:'α-Motor\nNeuron',sublabel:'Lower MN'},
-      {id:'N3',type:'MUSCLE',   fx:.75,fy:.5,  releases:null,  accepts:'ACH', label:'Muscle Fiber',  sublabel:'Biceps brachii', isTarget:true},
-      // distractors
-      {id:'D1',type:'INTER',    fx:.42,fy:.72, releases:'GLU', accepts:'GLU', label:'Interneuron',   sublabel:'(wrong!)',     isDistractor:true},
-      {id:'D2',type:'RELAY',    fx:.75,fy:.28, releases:null,  accepts:'GLU', label:'Spinal Cord',   sublabel:'(wrong target)', isDistractor:true},
-    ],
-    source:'N1', target:'N3',
-    solution:['N1','N2','N3'],
+    q: 'What triggers the "fight or flight" response?',
+    opts: ['Adrenaline (epinephrine)', 'Serotonin', 'Melatonin'],
+    ans: 0,
+    fact: 'Adrenaline (epinephrine) is released by the adrenal glands, flooding the blood. It accelerates your heart, dilates pupils, diverts blood to muscles, and shuts down digestion — prepping you to fight or flee!',
   },
   {
-    title:'Level 5', name:'Dopamine Reward Circuit',
-    description:'Build the mesolimbic pathway — the brain\'s reward highway. VTA dopamine neurons project to the Nucleus Accumbens. Find the right route!',
-    fact:'Dopamine doesn\'t signal pleasure — it signals PREDICTION ERROR. When something is better than expected, dopamine spikes. This is why variable rewards (slot machines, social media likes) are so addictive.',
-    timeLimit:65,
-    neurons:[
-      {id:'N1',type:'CORTICAL', fx:.08,fy:.48, releases:'GLU', accepts:null,  label:'Prefrontal\nCortex', sublabel:'Goal signal',isSource:true},
-      {id:'N2',type:'DOPAMINE', fx:.35,fy:.48, releases:'DA',  accepts:'GLU', label:'VTA Neuron',    sublabel:'Dopaminergic'},
-      {id:'N3',type:'RELAY',    fx:.62,fy:.48, releases:'GLU', accepts:'DA',  label:'Nucleus\nAccumbens',sublabel:'Reward center'},
-      {id:'N4',type:'INTER',    fx:.88,fy:.48, releases:null,  accepts:'GLU', label:'Striatum',      sublabel:'Motor output', isTarget:true},
-      // distractors
-      {id:'D1',type:'INTER',    fx:.35,fy:.72, releases:'GABA',accepts:'GLU', label:'GABA IN',       sublabel:'(inhibitory)',  isDistractor:true},
-      {id:'D2',type:'RELAY',    fx:.62,fy:.72, releases:'SERO',accepts:'DA',  label:'Raphe Neuron',  sublabel:'(wrong!)',      isDistractor:true},
-      {id:'D3',type:'CORTICAL', fx:.88,fy:.72, releases:null,  accepts:'GABA',label:'Cortex',        sublabel:'(wrong!)',      isDistractor:true},
-    ],
-    source:'N1', target:'N4',
-    solution:['N1','N2','N3','N4'],
+    q: 'Serotonin is best known for regulating your...',
+    opts: ['Mood and sleep', 'Muscle contractions', 'Balance and coordination'],
+    ans: 0,
+    fact: 'Serotonin helps regulate mood, sleep, appetite and social behaviour. 90% of your body\'s serotonin is actually made in your gut! SSRIs like Prozac boost available serotonin to treat depression.',
   },
   {
-    title:'Level 6', name:'Fight or Flight',
-    description:'The sympathetic nervous system is a TWO-NEURON chain. The first neuron uses one NT, the second switches to a completely different one at the target organ.',
-    fact:'ACh preganglionic → nicotinic receptor in ganglion. NE postganglionic → α/β-adrenergic at organ. Adrenal medulla is a modified ganglion that releases epinephrine (adrenaline) directly into blood!',
-    timeLimit:75,
-    neurons:[
-      {id:'N1',type:'CORTICAL',  fx:.08,fy:.48, releases:'GLU', accepts:null,  label:'Hypothalamus', sublabel:'Threat!',        isSource:true},
-      {id:'N2',type:'INTER',     fx:.32,fy:.48, releases:'ACH', accepts:'GLU', label:'Preganglionic', sublabel:'T1–L2 cord'},
-      {id:'N3',type:'RELAY',     fx:.56,fy:.48, releases:'NE',  accepts:'ACH', label:'Sympathetic\nGanglion',sublabel:'Paravertebral'},
-      {id:'N4',type:'MOTOR',     fx:.80,fy:.48, releases:null,  accepts:'NE',  label:'Heart /\nAdrenal', sublabel:'Target organ', isTarget:true},
-      // distractors
-      {id:'D1',type:'INTER',     fx:.32,fy:.72, releases:'GLU', accepts:'GLU', label:'Wrong Inter',  sublabel:'(GLU — wrong)',  isDistractor:true},
-      {id:'D2',type:'RELAY',     fx:.56,fy:.72, releases:'DA',  accepts:'ACH', label:'Wrong Relay',  sublabel:'(DA — wrong!)',  isDistractor:true},
-      {id:'D3',type:'MOTOR',     fx:.80,fy:.72, releases:null,  accepts:'DA',  label:'Wrong Target', sublabel:'(DA — wrong!)', isDistractor:true},
-    ],
-    source:'N1', target:'N4',
-    solution:['N1','N2','N3','N4'],
+    q: 'What happens at a SYNAPSE?',
+    opts: ['One neuron sends chemical messages to another', 'The brain stores a memory', 'A muscle contracts'],
+    ans: 0,
+    fact: 'At a synapse, the arriving electrical signal triggers the release of chemical neurotransmitters. These float across the tiny synaptic cleft and bind to receptors on the next neuron, continuing — or stopping — the signal.',
   },
   {
-    title:'Level 7', name:'Serotonin & Mood',
-    description:'The raphe nuclei broadcast serotonin throughout the brain to regulate mood, sleep, and anxiety. Route the signal from the amygdala through the raphe to the cortex.',
-    fact:'SSRIs take 2–4 weeks to work despite immediate NT changes — suggesting antidepressants work via neuroplasticity (new synapse growth), not just acute serotonin levels. The exact mechanism is still debated.',
-    timeLimit:70,
-    neurons:[
-      {id:'N1',type:'INTER',    fx:.08,fy:.5,  releases:'GLU', accepts:null,   label:'Amygdala',    sublabel:'Stress signal',   isSource:true},
-      {id:'N2',type:'RELAY',    fx:.35,fy:.5,  releases:'SERO',accepts:'GLU',  label:'Raphe\nNuclei', sublabel:'5-HT factory'},
-      {id:'N3',type:'CORTICAL', fx:.62,fy:.5,  releases:'GLU', accepts:'SERO', label:'Hippocampus',  sublabel:'Mood regulation'},
-      {id:'N4',type:'CORTICAL', fx:.88,fy:.5,  releases:null,  accepts:'GLU',  label:'Prefrontal\nCortex', sublabel:'Control', isTarget:true},
-      // distractors
-      {id:'D1',type:'DOPAMINE', fx:.35,fy:.72, releases:'DA',  accepts:'GLU',  label:'VTA Neuron',   sublabel:'(DA — wrong!)',   isDistractor:true},
-      {id:'D2',type:'INTER',    fx:.62,fy:.28, releases:'GLU', accepts:'DA',   label:'Striatum',     sublabel:'(DA — wrong!)',   isDistractor:true},
-      {id:'D3',type:'INHIBITORY',fx:.62,fy:.72, releases:'GABA',accepts:'SERO',label:'GABA IN',      sublabel:'(inhibitory!)',   isDistractor:true},
-    ],
-    source:'N1', target:'N4',
-    solution:['N1','N2','N3','N4'],
-  },
-  {
-    title:'Level 8', name:'Master Circuit',
-    description:'The complete sensorimotor loop — from skin to brain to muscle. FIVE synapses, FOUR neurotransmitter types. No distractors — find the order from the clues alone!',
-    fact:'Your brain fires a voluntary motor command in ~200ms, traversing 4–5 synaptic relays. Each synaptic delay is ~0.5ms, so synapse traversal takes only ~2ms total — the rest is axon conduction and processing!',
-    timeLimit:100,
-    neurons:[
-      {id:'N1',type:'SENSORY',  fx:.05,fy:.5,  releases:'SP',  accepts:null,  label:'Nociceptor',   sublabel:'Skin',            isSource:true},
-      {id:'N2',type:'INTER',    fx:.22,fy:.5,  releases:'GLU', accepts:'SP',  label:'Dorsal Horn',  sublabel:'Spinal Cord'},
-      {id:'N3',type:'RELAY',    fx:.39,fy:.5,  releases:'GLU', accepts:'GLU', label:'Thalamus',     sublabel:'VPL relay'},
-      {id:'N4',type:'CORTICAL', fx:.56,fy:.5,  releases:'DA',  accepts:'GLU', label:'Cortex',       sublabel:'Processing'},
-      {id:'N5',type:'MOTOR',    fx:.73,fy:.5,  releases:'ACH', accepts:'DA',  label:'Motor\nNeuron', sublabel:'Corticospinal'},
-      {id:'N6',type:'MUSCLE',   fx:.90,fy:.5,  releases:null,  accepts:'ACH', label:'Muscle',       sublabel:'Effector',         isTarget:true},
-    ],
-    source:'N1', target:'N6',
-    solution:['N1','N2','N3','N4','N5','N6'],
+    q: 'Your resting nerve cell has a charge of...',
+    opts: ['−70 millivolts (negative)', '+40 millivolts (positive)', '0 volts (neutral)'],
+    ans: 0,
+    fact: 'The resting membrane potential is −70 mV — the inside of the cell is negative compared to outside. When stimulated above −55 mV (the threshold), the cell fires an action potential that peaks at +40 mV!',
   },
 ];
 
+// ── PARTICLES ────────────────────────────────────────────────
+const particles = [];
+const lerp  = (a,b,t) => a+(b-a)*t;
+const clamp = (v,lo,hi) => Math.max(lo, Math.min(hi, v));
+const rand  = (lo,hi) => lo + Math.random()*(hi-lo);
+
+function spawnBurst(x,y,color,n=16,spd=.14){
+  for(let i=0;i<n;i++){
+    const a=(Math.PI*2*i/n)+rand(-.3,.3), s=spd*rand(.5,1.5);
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,color,life:rand(350,800),max:800,sz:rand(2,4)});
+  }
+}
+function spawnTrail(x,y,color){
+  for(let i=0;i<4;i++)
+    particles.push({x:x+rand(-6,6),y:y+rand(-6,6),vx:rand(-.04,.04),vy:rand(-.06,0),color,life:rand(200,500),max:500,sz:rand(2,3.5)});
+}
+function hexRgb(h){const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return[r,g,b];}
+function rgba(h,a){const[r,g,b]=hexRgb(h);return`rgba(${r},${g},${b},${a})`;}
+
 // ── GAME STATE ────────────────────────────────────────────────
 const G = {
-  state:'MENU', levelIdx:0, score:0, combo:0, maxCombo:0,
-  neurons:[], connections:[], apTracer:null,
-  drag:null,         // {neuron, cx, cy} while dragging
-  hintActive:null,   // {pre,post,until} flash hint
-  levelTime:0, levelTimerMax:50,
-  wrongCount:0, hintCount:0,
-  levelsComplete:[],
+  pos: 1,          // current square (1-36)
+  score: 0,
+  state: 'idle',   // idle | rolling | moving | event | quiz | paused
+  skipTurn: false,
+  diceVal: 1,
+  quizIdx: -1,
+  quizAnswered: false,
+  t: 0,
+  // token animation
+  tokenPath: [],   // squares to move through
+  tokenStep: 0,
+  tokenT: 0,       // 0-1 lerp between steps
+  tokenX: 0, tokenY: 0,
+  pendingEffect: null,
 };
 
-// ── LEVEL LOADER ──────────────────────────────────────────────
-function loadLevel(idx){
-  const lvl=LEVELS[idx]; if(!lvl) return;
-  G.levelIdx=idx; G.connections=[]; G.drag=null; G.hintActive=null;
-  G.levelTime=0; G.levelTimerMax=lvl.timeLimit;
-  G.wrongCount=0; G.hintCount=0; G.apTracer=null;
-  G.state='PLAYING';
-  particles.length=0;
-
-  const pw=W()-80, ph=H()-TOP-BOT-80;
-  const ox=40, oy=TOP+40;
-
-  G.neurons = lvl.neurons.map(cfg=>{
-    const n=new Neuron(cfg);
-    n.x=ox+cfg.fx*pw;
-    n.y=oy+cfg.fy*ph;
-    return n;
-  });
-
-  document.getElementById('levelTag').textContent=lvl.title.toUpperCase();
-  document.getElementById('levelName').textContent=lvl.name;
-  document.getElementById('fireBtn').style.display='none';
-  setInstruction('Drag from a neuron to connect it → match the ▲ release badge to the ▼ accept badge');
-  updateProgDots();
-  showOverlay('intro', lvl);
-}
-
-// ── CONNECTION LOGIC ──────────────────────────────────────────
-function tryConnect(pre, post){
-  if(pre===post) return false;
-  if(G.connections.some(c=>c.pre===pre&&c.post===post)) return false;
-  if(!pre.releases || !post.accepts) return false;
-
-  if(pre.releases===post.accepts){
-    // valid!
-    const conn=new Connection(pre,post);
-    G.connections.push(conn);
-    G.combo++;
-    G.maxCombo=Math.max(G.maxCombo,G.combo);
-    const pts=120+(G.combo>1?G.combo*25:0)+Math.floor(Math.max(0,G.levelTimerMax-G.levelTime)*2);
-    G.score+=pts;
-    spawnBurst(post.x,post.y,NT[pre.releases]?.color||'#FFF',20,.13);
-    feedback(post.x,post.y-30,`+${pts}${G.combo>1?' ×'+G.combo+'!':''}`,NT[pre.releases]?.color||'#2ECC71');
-    updateScore(); updateCombo();
-    if(checkPathComplete()) showFireBtn();
-    return true;
-  } else {
-    // invalid — wrong NT-receptor pair
-    G.combo=0; G.wrongCount++;
-    G.score=Math.max(0,G.score-30);
-    spawnBurst(post.x,post.y,'#FF4444',10,.09);
-    feedback(post.x,post.y-30,`Mismatch! ${NT[pre.releases]?.abbr||pre.releases} ≠ ${NT[post.accepts]?.abbr||post.accepts}  −30`,'#FF4444');
-    updateScore(); updateCombo();
-    return false;
-  }
-}
-
-function removeConnection(conn){
-  const i=G.connections.indexOf(conn);
-  if(i>=0){ G.connections.splice(i,1); document.getElementById('fireBtn').style.display='none'; }
-}
-
-function checkPathComplete(){
-  const lvl=LEVELS[G.levelIdx];
-  const srcId=lvl.source, tgtId=lvl.target;
-  // BFS from source through connections
-  const adj={};
-  for(const n of G.neurons) adj[n.id]=[];
-  for(const c of G.connections) adj[c.pre.id].push(c.post.id);
-  const visited=new Set([srcId]), queue=[srcId];
-  while(queue.length){
-    const cur=queue.shift();
-    if(cur===tgtId) return true;
-    for(const nb of (adj[cur]||[])){
-      if(!visited.has(nb)){ visited.add(nb); queue.push(nb); }
-    }
-  }
-  return false;
-}
-
-function getPathNeurons(){
-  const lvl=LEVELS[G.levelIdx];
-  const srcId=lvl.source, tgtId=lvl.target;
-  const adj={};
-  for(const n of G.neurons) adj[n.id]=[];
-  for(const c of G.connections) adj[c.pre.id].push(c.post.id);
-  const prev={};
-  const visited=new Set([srcId]), queue=[srcId];
-  while(queue.length){
-    const cur=queue.shift();
-    if(cur===tgtId) break;
-    for(const nb of (adj[cur]||[])){
-      if(!visited.has(nb)){ visited.add(nb); prev[nb]=cur; queue.push(nb); }
-    }
-  }
-  if(!(tgtId in prev) && srcId!==tgtId) return null;
-  const path=[]; let cur=tgtId;
-  while(cur){ path.unshift(cur); cur=prev[cur]; }
-  return path.map(id=>G.neurons.find(n=>n.id===id)).filter(Boolean);
-}
-
-// ── HINT SYSTEM ───────────────────────────────────────────────
-function useHint(){
-  if(G.state!=='PLAYING') return;
-  const lvl=LEVELS[G.levelIdx];
-  // find a correct connection that isn't drawn yet
-  const sol=lvl.solution;
-  for(let i=0;i<sol.length-1;i++){
-    const pid=sol[i], qid=sol[i+1];
-    const already=G.connections.some(c=>c.pre.id===pid&&c.post.id===qid);
-    if(!already){
-      const pre=G.neurons.find(n=>n.id===pid);
-      const post=G.neurons.find(n=>n.id===qid);
-      if(pre&&post){
-        G.hintActive={pre,post,until:performance.now()+2000};
-        G.hintCount++;
-        G.score=Math.max(0,G.score-50);
-        feedback(W()/2,H()/2-40,'Hint used  −50','#FFC107');
-        updateScore();
-        return;
-      }
-    }
-  }
-}
-
-// ── FIRE! ─────────────────────────────────────────────────────
-function fireCircuit(){
-  if(G.state!=='PLAYING') return;
-  G.state='FIRING';
-  document.getElementById('fireBtn').style.display='none';
-  setInstruction('Action potential propagating…');
-  const path=getPathNeurons();
-  if(!path) return;
-  path[0].fireNow(performance.now());
-  osc.trigger();
-  G.apTracer=new APTracer(path);
-  const dur=path.length*520+600;
-  setTimeout(()=>{ if(G.state==='FIRING') levelComplete(); }, dur);
-}
-
-function levelComplete(){
-  G.state='LEVEL_COMPLETE';
-  G.levelsComplete.push(G.levelIdx);
-  const lvl=LEVELS[G.levelIdx];
-  const timeBonus=Math.floor(Math.max(0,G.levelTimerMax-G.levelTime)*5);
-  const accBonus=Math.max(0,(6-G.wrongCount)*40);
-  const hintPen=G.hintCount*50;
-  G.score=Math.max(0,G.score+timeBonus+accBonus-hintPen);
-  updateScore();
-  const pct=clamp((5-G.wrongCount)/5,.0,1);
-  const timeR=clamp((G.levelTimerMax-G.levelTime)/G.levelTimerMax,0,1);
-  const stars=pct>.8&&timeR>.4?3:pct>.5?2:1;
-  setTimeout(()=>showOverlay('complete',lvl,stars,G.score),400);
-}
-
-// ── OVERLAY ───────────────────────────────────────────────────
-function showOverlay(mode,lvl,stars,score){
-  document.getElementById('overlay').style.display='flex';
-  const h1=document.querySelector('#card h1');
-  const sub=document.querySelector('#card .sub');
-  let h2=document.getElementById('cardTitle');
-
-  document.getElementById('cardFact').style.display='none';
-  document.getElementById('cardScore').style.display='none';
-  document.getElementById('cardStars').style.display='none';
-  h2.style.display='none';
-
-  if(mode==='menu'){
-    h1.style.display='block'; sub.style.display='block';
-    document.getElementById('cardBody').innerHTML=`
-      Drag connections between neurons to build the correct neural circuit.<br><br>
-      Each neuron shows what it <span style="color:#FFD700">releases ▲</span> and what it <span style="color:#80DEEA">accepts ▼</span>.<br>
-      A synapse only forms when they <strong style="color:#2ECC71">match</strong>.<br><br>
-      Connect <span style="color:#EF9A9A">SOURCE</span> → <span style="color:#81C784">TARGET</span> via the correct pathway!
-    `;
-    document.getElementById('cardBtns').innerHTML=`<button class="btn" onclick="startGame()">START GAME</button>`;
-  } else if(mode==='intro'){
-    h1.style.display='none'; sub.style.display='none';
-    h2.style.display='block'; h2.textContent=lvl.name;
-    document.getElementById('cardBody').textContent=lvl.description;
-    document.getElementById('cardBtns').innerHTML=`<button class="btn" onclick="dismissOverlay()">LET'S GO</button>`;
-  } else if(mode==='complete'){
-    h1.style.display='none'; sub.style.display='none';
-    h2.style.display='block'; h2.textContent=lvl.name+' — Complete!';
-    document.getElementById('cardBody').innerHTML='<em>Pathway successfully built and fired!</em>';
-    const f=document.getElementById('cardFact'); f.style.display='block'; f.textContent=lvl.fact;
-    const s=document.getElementById('cardScore'); s.style.display='block'; s.textContent='Score: '+score.toLocaleString();
-    const st=document.getElementById('cardStars'); st.style.display='block';
-    st.innerHTML=`<span style="color:#FFD700">${'★'.repeat(stars)}${'☆'.repeat(3-stars)}</span>`;
-    const isLast=G.levelIdx>=LEVELS.length-1;
-    document.getElementById('cardBtns').innerHTML=isLast
-      ?`<button class="btn" onclick="showFinal()">SEE FINAL SCORE</button>`
-      :`<button class="btn" onclick="nextLevel()">NEXT LEVEL →</button><button class="btn sec" onclick="replayLevel()">REPLAY</button>`;
-  }
-}
-
-function dismissOverlay(){ document.getElementById('overlay').style.display='none'; G.state='PLAYING'; }
-function startGame(){ document.getElementById('overlay').style.display='none'; loadLevel(0); }
-function nextLevel(){ document.getElementById('overlay').style.display='none'; G.combo=0; loadLevel(G.levelIdx+1); }
-function replayLevel(){ document.getElementById('overlay').style.display='none'; G.score=Math.max(0,G.score-50); loadLevel(G.levelIdx); }
-
-function showFinal(){
-  document.getElementById('cardTitle').textContent='You Mastered the Brain!';
-  document.getElementById('cardTitle').style.color='#FFD700';
-  document.getElementById('cardBody').innerHTML=`All 8 circuits complete.<br><br>
-    From reflexes to reward, pain to fight-or-flight — you now speak the brain's chemical language.`;
-  document.getElementById('cardFact').textContent=
-    'Your 86 billion neurons make ~100 trillion synaptic connections. Every synapse uses the same basic mechanism you just mastered: NT release, receptor binding, ion channel opening. That\'s it. That\'s the whole brain.';
-  document.getElementById('cardFact').style.display='block';
-  document.getElementById('cardScore').textContent='Final Score: '+G.score.toLocaleString();
-  document.getElementById('cardScore').style.display='block';
-  document.getElementById('cardStars').style.display='none';
-  document.getElementById('cardBtns').innerHTML=`<button class="btn" onclick="restartAll()">PLAY AGAIN</button>`;
-}
-
-function restartAll(){
-  G.score=0; G.combo=0; G.levelsComplete=[];
-  updateScore(); updateCombo();
-  document.getElementById('overlay').style.display='none';
-  loadLevel(0);
-}
-
-// ── UI HELPERS ────────────────────────────────────────────────
-function showFireBtn(){ document.getElementById('fireBtn').style.display='block'; setInstruction('Path complete! Hit FIRE to send the action potential!'); }
-function setInstruction(t){ document.getElementById('instruction').textContent=t; }
-function updateScore(){ document.getElementById('scoreval').textContent=G.score.toLocaleString(); }
-function updateCombo(){
-  const el=document.getElementById('combo');
-  el.textContent=G.combo>1?`COMBO ×${G.combo}`:'';
-}
-function updateProgDots(){
-  const el=document.getElementById('progDots'); el.innerHTML='';
-  for(let i=0;i<LEVELS.length;i++){
-    const d=document.createElement('div'); d.className='pdot';
-    if(G.levelsComplete.includes(i)) d.classList.add('done');
-    else if(i===G.levelIdx) d.classList.add('current');
-    el.appendChild(d);
-  }
-}
-function updateTimer(){
-  const secs=Math.max(0,Math.ceil(G.levelTimerMax-G.levelTime));
-  const m=Math.floor(secs/60), s=secs%60;
-  document.getElementById('timerVal').textContent=`${m}:${s.toString().padStart(2,'0')}`;
-  const ratio=clamp(1-G.levelTime/G.levelTimerMax,0,1);
-  document.getElementById('timerFill').style.width=(ratio*100)+'%';
-}
-function feedback(x,y,txt,col){
-  const el=document.createElement('div'); el.className='fb';
-  el.style.cssText=`left:${x}px;top:${y}px;color:${col};text-shadow:0 0 8px ${col}`;
-  el.textContent=txt; document.body.appendChild(el);
-  setTimeout(()=>el.remove(),1100);
-}
-function showTip(html,x,y){
-  const t=document.getElementById('tip');
-  t.innerHTML=html; t.style.display='block';
-  t.style.left=Math.min(x+14,innerWidth-240)+'px';
-  t.style.top=Math.max(y-60,0)+'px';
-}
-function hideTip(){ document.getElementById('tip').style.display='none'; }
+// ── DICE FACES ────────────────────────────────────────────────
+const DICE_FACES = ['⚡','①','②','③','④','⑤','⑥'];
 
 // ── RENDERING ────────────────────────────────────────────────
-function drawBG(t){
-  ctx.fillStyle='#020208'; ctx.fillRect(0,0,W(),H());
-  ctx.strokeStyle='rgba(80,100,180,.025)'; ctx.lineWidth=1;
-  const gs=44;
-  for(let x=0;x<W();x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H());ctx.stroke();}
-  for(let y=0;y<H();y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W(),y);ctx.stroke();}
-  // soft vignette
-  const vg=ctx.createRadialGradient(CX(),H()/2,0,CX(),H()/2,Math.max(W(),H())*.72);
-  vg.addColorStop(0,'transparent'); vg.addColorStop(1,'rgba(2,2,8,.55)');
-  ctx.fillStyle=vg; ctx.fillRect(0,0,W(),H());
+const TYPE_COLOR = {
+  normal:      '#1a2a4a',
+  start:       '#1B3A2A',
+  finish:      '#2E2200',
+  ladder_base: '#0D2A35',
+  ladder_top:  '#0D2A35',
+  snake_head:  '#2D0D0D',
+  snake_tail:  '#2D0D0D',
+  quiz:        '#1E1800',
+  special:     '#1A0D2E',
+};
+const TYPE_BORDER = {
+  normal:      '#2E4A6A',
+  start:       '#2ECC71',
+  finish:      '#FFD700',
+  ladder_base: '#4FC3F7',
+  ladder_top:  '#4FC3F7',
+  snake_head:  '#EF9A9A',
+  snake_tail:  '#EF9A9A',
+  quiz:        '#FFC107',
+  special:     '#CE93D8',
+};
+
+function drawBoard(t) {
+  const cs = cellSize();
+  const { x: bx, y: by } = boardOrigin();
+
+  // Board background
+  ctx.save();
+  ctx.shadowColor = 'rgba(79,195,247,.06)';
+  ctx.shadowBlur  = 40;
+  ctx.fillStyle   = 'rgba(5,5,18,.95)';
+  ctx.strokeStyle = 'rgba(79,195,247,.06)';
+  ctx.lineWidth   = 1;
+  roundRect(ctx, bx-4, by-4, cs*GRID+8, cs*GRID+8, 14);
+  ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  // Cells
+  for (let n = 1; n <= TOTAL; n++) {
+    const { x, y } = sqPos(n);
+    const type = SQUARE_TYPES[n];
+    const isHere = (n === G.pos);
+
+    ctx.save();
+    if (isHere) { ctx.shadowColor = '#FFFFFF'; ctx.shadowBlur = 18; }
+
+    // Cell background
+    ctx.fillStyle = TYPE_COLOR[type] || TYPE_COLOR.normal;
+    ctx.strokeStyle = TYPE_BORDER[type] || TYPE_BORDER.normal;
+    ctx.lineWidth = isHere ? 2.5 : 1;
+    roundRect(ctx, x-cs/2+2, y-cs/2+2, cs-4, cs-4, 8);
+    ctx.fill(); ctx.stroke();
+
+    // Subtle neuron glow on hover-ish pulse
+    if (!isHere) {
+      const pulse = Math.sin(t*.001 + n*.4)*.5+.5;
+      ctx.globalAlpha = pulse * 0.04;
+      ctx.fillStyle = TYPE_BORDER[type] || '#4FC3F7';
+      roundRect(ctx, x-cs/2+2, y-cs/2+2, cs-4, cs-4, 8);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+
+    // Square number
+    ctx.save();
+    ctx.font = `bold ${Math.max(9, cs*0.15)}px Courier New`;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillStyle = rgba(TYPE_BORDER[type]||'#4FC3F7', 0.5);
+    ctx.fillText(n, x - cs/2 + 5, y - cs/2 + 4);
+    ctx.restore();
+
+    // Cell icon / label
+    drawCellIcon(n, x, y, cs, t);
+  }
+
+  // Ladders
+  LADDERS.forEach(l => drawLadder(l, t));
+  // Snakes
+  SNAKES.forEach(s => drawSnake(s, t));
 }
 
-function drawHintFlash(t){
-  const h=G.hintActive; if(!h) return;
-  if(t>h.until){ G.hintActive=null; return; }
-  const blink=Math.sin(t*.015)>.0;
-  if(!blink) return;
-  const col='#FFC107';
+function drawCellIcon(n, x, y, cs, t) {
+  const type = SQUARE_TYPES[n];
+  const fs = Math.max(10, cs * 0.18);
   ctx.save();
-  // highlight pre
-  ctx.shadowColor=col; ctx.shadowBlur=30;
-  ctx.strokeStyle=rgba(col,.8); ctx.lineWidth=3;
-  ctx.beginPath(); ctx.arc(h.pre.x,h.pre.y,h.pre.r+16,0,Math.PI*2); ctx.stroke();
-  // highlight post
-  ctx.beginPath(); ctx.arc(h.post.x,h.post.y,h.post.r+16,0,Math.PI*2); ctx.stroke();
-  // dashed line between
-  ctx.lineWidth=2; ctx.setLineDash([6,5]);
-  ctx.beginPath(); ctx.moveTo(h.pre.x,h.pre.y); ctx.lineTo(h.post.x,h.post.y); ctx.stroke();
-  ctx.setLineDash([]);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+  if (n === 1) {
+    ctx.font = `bold ${fs}px Courier New`;
+    ctx.fillStyle = '#2ECC71'; ctx.shadowColor = '#2ECC71'; ctx.shadowBlur = 8;
+    ctx.fillText('START', x, y);
+  } else if (n === 36) {
+    const pulse = Math.sin(t*.003)*.5+.5;
+    ctx.font = `bold ${fs}px Courier New`;
+    ctx.fillStyle = `rgba(255,215,0,${.7+pulse*.3})`; ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 12+pulse*8;
+    ctx.fillText('BRAIN!', x, y-fs*.4);
+    ctx.font = `${fs*.7}px Courier New`;
+    ctx.fillText('FINISH', x, y+fs*.55);
+  } else if (type === 'quiz') {
+    const pulse = Math.sin(t*.002+n)*.5+.5;
+    ctx.font = `${cs*.38}px serif`;
+    ctx.globalAlpha = .6+pulse*.4;
+    ctx.shadowColor = '#FFC107'; ctx.shadowBlur = 6+pulse*10;
+    ctx.fillText('❓', x, y);
+  } else if (type === 'special') {
+    const sp = SPECIAL_SQUARES[n];
+    ctx.font = `${cs*.36}px serif`;
+    ctx.shadowColor = sp.color; ctx.shadowBlur = 8;
+    ctx.fillText(sp.icon, x, y);
+  } else if (type === 'ladder_base') {
+    ctx.font = `bold ${fs*.85}px Courier New`;
+    ctx.fillStyle = '#4FC3F7'; ctx.shadowColor = '#4FC3F7'; ctx.shadowBlur = 7;
+    ctx.fillText('▲ LAUNCH', x, y);
+  } else if (type === 'snake_head') {
+    ctx.font = `bold ${fs*.85}px Courier New`;
+    ctx.fillStyle = '#EF9A9A'; ctx.shadowColor = '#EF9A9A'; ctx.shadowBlur = 7;
+    ctx.fillText('▼ GABA!', x, y);
+  } else {
+    // Regular square — small neuron dot
+    const pulse = Math.sin(t*.0012+n*.7)*.5+.5;
+    ctx.fillStyle = rgba('#4FC3F7', .15+pulse*.12);
+    ctx.shadowColor = '#4FC3F7'; ctx.shadowBlur = 4+pulse*6;
+    ctx.beginPath(); ctx.arc(x, y, cs*.14, 0, Math.PI*2); ctx.fill();
+  }
   ctx.restore();
 }
 
-function render(t){
-  drawBG(t);
-  drawHintFlash(t);
-  for(const c of G.connections) c.draw(t);
-  for(const n of G.neurons){ n.update(t); n.draw(t); }
-  if(G.drag){
-    const col=NT[G.drag.neuron.releases]?.color||'#80DEEA';
-    drawDragWire(G.drag.neuron.x, G.drag.neuron.y, G.drag.cx, G.drag.cy, col, t);
+function drawLadder(l, t) {
+  const a = sqPos(l.from), b = sqPos(l.to);
+  const pulse = Math.sin(t*.002)*.5+.5;
+  const cs = cellSize();
+
+  ctx.save();
+  // glow
+  ctx.shadowColor = l.color; ctx.shadowBlur = 8+pulse*12;
+  ctx.strokeStyle = rgba(l.color, .55+pulse*.2);
+  ctx.lineWidth = cs*.07;
+  ctx.lineCap = 'round';
+
+  // Main line (slightly curved)
+  const mx = (a.x+b.x)/2 - (b.y-a.y)*.15;
+  const my = (a.y+b.y)/2 + (b.x-a.x)*.15;
+  ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.quadraticCurveTo(mx,my,b.x,b.y); ctx.stroke();
+
+  // Rungs
+  ctx.lineWidth = cs*.04;
+  ctx.shadowBlur = 4;
+  for (let i=.25;i<=.75;i+=.25) {
+    const lx = lerp(a.x,b.x,i), ly = lerp(a.y,b.y,i);
+    const perp = { x:-(b.y-a.y)*.1, y:(b.x-a.x)*.1 };
+    ctx.beginPath();
+    ctx.moveTo(lx-perp.x, ly-perp.y);
+    ctx.lineTo(lx+perp.x, ly+perp.y);
+    ctx.stroke();
   }
-  if(G.apTracer) G.apTracer.draw(t);
+
+  // Label at midpoint
+  ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+  ctx.font = `bold ${Math.max(9,cs*.13)}px Courier New`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = rgba(l.color, .8);
+  ctx.fillText(l.icon+' '+l.label, mx, my - cs*.15);
+  ctx.restore();
+}
+
+function drawSnake(s, t) {
+  const a = sqPos(s.from), b = sqPos(s.to);
+  const pulse = Math.sin(t*.0018+s.from)*.5+.5;
+  const cs = cellSize();
+
+  ctx.save();
+  ctx.shadowColor = s.color; ctx.shadowBlur = 6+pulse*10;
+  ctx.strokeStyle = rgba(s.color, .55+pulse*.2);
+  ctx.lineWidth = cs*.07;
+  ctx.lineCap = 'round';
+
+  // Wavy snake path (multiple control points)
+  const steps = 20;
+  ctx.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    const tt = i / steps;
+    const lx = lerp(a.x, b.x, tt);
+    const ly = lerp(a.y, b.y, tt);
+    const wave = Math.sin(tt * Math.PI * 3 + t*.003) * cs * .22;
+    const dx = -(b.y-a.y), dy = (b.x-a.x);
+    const dl = Math.hypot(dx,dy)||1;
+    const wx = lx + (dx/dl)*wave, wy = ly + (dy/dl)*wave;
+    i===0 ? ctx.moveTo(wx,wy) : ctx.lineTo(wx,wy);
+  }
+  ctx.stroke();
+
+  // Snake head at `from`
+  ctx.shadowBlur = 14;
+  ctx.fillStyle = s.color;
+  ctx.beginPath(); ctx.arc(a.x, a.y, cs*.14, 0, Math.PI*2); ctx.fill();
+
+  // Label
+  ctx.shadowBlur = 0; ctx.shadowColor='transparent';
+  const mx = (a.x+b.x)/2 + cs*.35;
+  const my = (a.y+b.y)/2;
+  ctx.font = `bold ${Math.max(9,cs*.13)}px Courier New`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = rgba(s.color, .8);
+  ctx.fillText(s.icon+' '+s.label, mx, my);
+  ctx.restore();
+}
+
+function drawToken(t) {
+  const tx = G.tokenX, ty = G.tokenY;
+  const pulse = Math.sin(t*.005)*.5+.5;
+  const cs = cellSize();
+
+  ctx.save();
+  // outer pulse ring
+  ctx.shadowColor = '#FFFFFF';
+  ctx.shadowBlur = 20+pulse*20;
+  ctx.strokeStyle = rgba('#FFFFFF', .3+pulse*.4);
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(tx, ty, cs*.22+pulse*cs*.04, 0, Math.PI*2); ctx.stroke();
+
+  // inner glow
+  ctx.shadowBlur = 30;
+  const g = ctx.createRadialGradient(tx,ty,0,tx,ty,cs*.18);
+  g.addColorStop(0,'rgba(255,255,255,.95)');
+  g.addColorStop(.5,'rgba(100,200,255,.6)');
+  g.addColorStop(1,'rgba(79,195,247,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(tx, ty, cs*.18, 0, Math.PI*2); ctx.fill();
+
+  // core dot
+  ctx.shadowBlur = 15;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath(); ctx.arc(tx, ty, cs*.09, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // trail
+  if (G.state === 'moving') spawnTrail(tx, ty, '#4FC3F7');
+}
+
+function drawBG() {
+  ctx.fillStyle = '#020208';
+  ctx.fillRect(0, 0, W(), H());
+  // subtle grid
+  ctx.strokeStyle = 'rgba(50,60,120,.04)';
+  ctx.lineWidth = 1;
+  for (let x=0;x<W();x+=44){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H());ctx.stroke();}
+  for (let y=0;y<H();y+=44){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W(),y);ctx.stroke();}
+  // vignette
+  const vg = ctx.createRadialGradient(W()/2,H()/2,0,W()/2,H()/2,Math.max(W(),H())*.75);
+  vg.addColorStop(0,'transparent'); vg.addColorStop(1,'rgba(2,2,8,.55)');
+  ctx.fillStyle = vg; ctx.fillRect(0,0,W(),H());
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    const a = clamp(p.life/p.max,0,1);
+    ctx.save(); ctx.globalAlpha=a;
+    ctx.shadowColor=p.color; ctx.shadowBlur=5;
+    ctx.fillStyle=p.color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.sz*a,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
+  ctx.closePath();
+}
+
+// ── GAME LOGIC ────────────────────────────────────────────────
+function rollDice() {
+  if (G.state !== 'idle') return;
+  if (G.skipTurn) {
+    G.skipTurn = false;
+    setInfo("You recovered from neural fatigue. Your turn's back!");
+    return;
+  }
+  G.state = 'rolling';
+  document.getElementById('rollBtn').disabled = true;
+  document.getElementById('dice').classList.add('rolling');
+
+  // Animate dice for 600ms
+  let spins = 0;
+  const interval = setInterval(() => {
+    G.diceVal = Math.ceil(Math.random()*6);
+    document.getElementById('dice').textContent = DICE_FACES[G.diceVal];
+    spins++;
+    if (spins >= 8) {
+      clearInterval(interval);
+      document.getElementById('dice').classList.remove('rolling');
+      beginMove(G.diceVal);
+    }
+  }, 75);
+}
+
+function beginMove(steps) {
+  const path = [];
+  for (let i = 1; i <= steps; i++) {
+    const sq = Math.min(G.pos + i, TOTAL);
+    path.push(sq);
+    if (sq === TOTAL) break;
+  }
+  G.tokenPath = path;
+  G.tokenStep = 0;
+  G.tokenT    = 0;
+  G.state     = 'moving';
+  spawnBurst(G.tokenX, G.tokenY, '#4FC3F7', 12, .12);
+}
+
+let lastT = 0;
+function loop(t) {
+  const dt = Math.min(t - lastT, 50); lastT = t;
+  G.t = t;
+
+  // Update particles
+  for (let i=particles.length-1;i>=0;i--){
+    const p=particles[i]; p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=.015*dt/16; p.life-=dt;
+    if(p.life<=0) particles.splice(i,1);
+  }
+
+  // Token animation
+  if (G.state === 'moving' && G.tokenPath.length > 0) {
+    G.tokenT += dt * .004;
+    if (G.tokenT >= 1) {
+      G.tokenT = 0;
+      G.pos = G.tokenPath[G.tokenStep];
+      G.tokenStep++;
+      const p = sqPos(G.pos);
+      G.tokenX = p.x; G.tokenY = p.y;
+      spawnBurst(p.x, p.y, '#80DEEA', 6, .08);
+      updateUI();
+
+      if (G.tokenStep >= G.tokenPath.length) {
+        // Finished moving
+        setTimeout(() => landOn(G.pos), 200);
+        G.state = 'event';
+      }
+    } else {
+      // Interpolate token between steps
+      const prevSq = G.tokenStep === 0 ? G.pos : G.tokenPath[G.tokenStep-1];
+      const nextSq = G.tokenPath[G.tokenStep] || G.pos;
+      const a2 = sqPos(prevSq), b2 = sqPos(nextSq);
+      G.tokenX = lerp(a2.x, b2.x, G.tokenT);
+      G.tokenY = lerp(a2.y, b2.y, G.tokenT);
+    }
+  }
+
+  drawBG();
+  drawBoard(t);
   drawParticles();
-  osc.draw();
-}
+  drawToken(t);
 
-// ── INPUT ─────────────────────────────────────────────────────
-function evtPos(e){
-  const src=e.touches?e.touches[0]||e.changedTouches[0]:e;
-  return {x:src.clientX, y:src.clientY};
-}
-
-function onDown(e){
-  e.preventDefault();
-  const {x,y}=evtPos(e);
-  if(G.state!=='PLAYING') return;
-  for(const n of G.neurons){
-    if(n.hit(x,y)){
-      G.drag={neuron:n, cx:x, cy:y};
-      setInstruction(`Drag to a neuron that accepts ${NT[n.releases]?.name||n.releases} (${NT[n.releases]?.abbr||'?'})`);
-      return;
-    }
-  }
-  // click on connection midpoint → delete it
-  for(const c of G.connections){
-    if(c.isMidHit(x,y)){ removeConnection(c); feedback(x,y-20,'Connection removed','#90A4AE'); return; }
-  }
-}
-
-function onMove(e){
-  e.preventDefault();
-  const {x,y}=evtPos(e);
-  if(G.drag){ G.drag.cx=x; G.drag.cy=y; }
-  if(G.state!=='PLAYING') return;
-
-  // tooltip on hover
-  for(const n of G.neurons){
-    if(n.hit(x,y)){
-      const relNt=NT[n.releases], accNt=NT[n.accepts];
-      const lines=[`<strong style="color:${n.tc.color}">${n.label.replace('\n',' ')}</strong>`,
-        n.sublabel?`<span style="color:#546E7A">${n.sublabel}</span>`:'',
-        relNt?`Releases: <span style="color:${relNt.color}">${relNt.name} (${relNt.abbr})</span>`:'',
-        accNt?`Accepts: <span style="color:${accNt.color}">${accNt.name} via ${accNt.receptor}</span>`:'Source neuron',
-      ].filter(Boolean).join('<br>');
-      showTip(lines, x, y); return;
-    }
-  }
-  hideTip();
-}
-
-function onUp(e){
-  e.preventDefault();
-  const {x,y}=evtPos(e);
-  if(!G.drag) return;
-  const pre=G.drag.neuron;
-  G.drag=null;
-  if(G.state!=='PLAYING') return;
-  for(const n of G.neurons){
-    if(n!==pre && n.hit(x,y)){
-      const ok=tryConnect(pre,n);
-      if(!ok) setInstruction(`Synapse rejected — ${NT[pre.releases]?.abbr||pre.releases} doesn't bind to ${NT[n.accepts]?.abbr||n.accepts} receptors`);
-      else     setInstruction('Connection made! Keep building the pathway…');
-      return;
-    }
-  }
-  setInstruction('Drag from a neuron to connect it to another');
-}
-
-cvs.addEventListener('pointerdown', onDown);
-cvs.addEventListener('pointermove', onMove);
-cvs.addEventListener('pointerup',   onUp);
-cvs.addEventListener('pointercancel', ()=>{ G.drag=null; });
-
-// ── GAME LOOP ─────────────────────────────────────────────────
-let lastT=0;
-function loop(t){
-  const dt=Math.min(t-lastT,50); lastT=t;
-  if(G.state==='PLAYING'){
-    G.levelTime+=dt/1000;
-    updateTimer();
-    if(G.levelTime>=G.levelTimerMax){
-      G.state='LEVEL_COMPLETE';
-      G.levelsComplete.push(G.levelIdx);
-      setTimeout(()=>showOverlay('complete',LEVELS[G.levelIdx],1,G.score),200);
-    }
-  }
-  if(G.apTracer) G.apTracer.update(dt,t);
-  osc.update(dt*.28);
-  updateParticles(dt);
-  render(t);
   requestAnimationFrame(loop);
 }
 
+function landOn(sq) {
+  const type = SQUARE_TYPES[sq];
+
+  if (sq === TOTAL) { showWin(); return; }
+
+  // Ladder?
+  const ladder = LADDERS.find(l => l.from === sq);
+  if (ladder) {
+    spawnBurst(G.tokenX, G.tokenY, '#4FC3F7', 24, .16);
+    showCard('🔼 LADDER!', ladder.label,
+      getQuestionForLadder(ladder),
+      null,
+      () => G.state = 'idle',  // just show info
+      true, sq, ladder
+    );
+    return;
+  }
+
+  // Snake?
+  const snake = SNAKES.find(s => s.from === sq);
+  if (snake) {
+    spawnBurst(G.tokenX, G.tokenY, '#EF9A9A', 20, .13);
+    showSnakeCard(snake);
+    return;
+  }
+
+  // Quiz?
+  if (type === 'quiz') {
+    const qIdx = Math.floor(Math.random() * QUESTIONS.length);
+    showQuizCard(QUESTIONS[qIdx]);
+    return;
+  }
+
+  // Special?
+  if (type === 'special') {
+    const sp = SPECIAL_SQUARES[sq];
+    showSpecialCard(sp);
+    return;
+  }
+
+  // Regular square — show a fun fact
+  const fact = FACTS[Math.floor(Math.random() * FACTS.length)];
+  showCard('🧠 Brain Fact!', `Square ${sq}`, fact, null, () => G.state='idle');
+}
+
+function getQuestionForLadder(ladder) {
+  return `You landed on <b style="color:#4FC3F7">${ladder.icon} ${ladder.label}</b>!<br><br>` +
+    (ladder.label.includes('Myelin') ? 'Myelinated axons use <em>saltatory conduction</em> — the signal leaps between exposed nodes (Nodes of Ranvier), making transmission up to 100× faster!' :
+     ladder.label.includes('Dopamine') ? 'Dopamine neurons in the VTA fire in response to unexpected rewards — fuelling motivation, learning, and yes, addictive behaviour too.' :
+     'Long-Term Potentiation (LTP) is how your brain forms memories: repeated stimulation strengthens synaptic connections — "neurons that fire together wire together"!') +
+    `<br><br>Jump ahead to square <b style="color:#4FC3F7">${ladder.to}</b>!`;
+}
+
+function showCard(icon, title, body, btns, onClose, isLadder, sq, ladder) {
+  document.getElementById('cardIcon').textContent  = icon;
+  document.getElementById('cardTitle').textContent = title;
+  document.getElementById('cardBody').innerHTML    = body;
+  const bEl = document.getElementById('cardBtns');
+  bEl.innerHTML = '';
+  if (btns) {
+    btns.forEach(b => bEl.appendChild(b));
+  }
+  const cont = document.createElement('button');
+  cont.className = 'cont-btn';
+  cont.textContent = isLadder ? `🚀 LAUNCH to square ${ladder.to}!` : 'Got it — continue!';
+  cont.onclick = () => {
+    closeCard();
+    if (isLadder && ladder) {
+      animateJump(ladder.from, ladder.to, '#4FC3F7');
+    } else if (onClose) {
+      onClose();
+    }
+  };
+  bEl.appendChild(cont);
+  openCard();
+}
+
+function showSnakeCard(snake) {
+  document.getElementById('cardIcon').textContent  = '🔽';
+  document.getElementById('cardTitle').textContent = `GABA Inhibition! ${snake.label}`;
+  const bodyText = snake.label.includes('GABA')
+    ? 'GABA floods the synapse and opens chloride channels — the cell becomes <em>hyperpolarized</em>, making it harder to fire. Your signal is suppressed!'
+    : snake.label.includes('Refractory')
+    ? 'After firing, sodium channels temporarily inactivate — the membrane can\'t respond to new signals. This <em>refractory period</em> limits firing frequency to ~1000 Hz max.'
+    : 'Opioid receptors on pain neurons, when activated, open K⁺ channels that hyperpolarize the cell — blocking pain signals. Natural endorphins do this; so do morphine and heroin.';
+  document.getElementById('cardBody').innerHTML = bodyText + `<br><br>Slide back to square <b style="color:#EF9A9A">${snake.to}</b>!`;
+  document.getElementById('cardBtns').innerHTML = '';
+  const cont = document.createElement('button');
+  cont.className = 'cont-btn';
+  cont.style.borderColor='rgba(239,154,154,.3)'; cont.style.color='#EF9A9A';
+  cont.textContent = `😬 Slide back to square ${snake.to}...`;
+  cont.onclick = () => { closeCard(); animateJump(snake.from, snake.to, '#EF9A9A', true); };
+  document.getElementById('cardBtns').appendChild(cont);
+  openCard();
+}
+
+function showQuizCard(q) {
+  G.state = 'quiz';
+  G.quizAnswered = false;
+  document.getElementById('cardIcon').textContent  = '❓';
+  document.getElementById('cardTitle').textContent = 'Brain Quiz!';
+  document.getElementById('cardBody').innerHTML    = `<b>${q.q}</b>`;
+  const bEl = document.getElementById('cardBtns');
+  bEl.innerHTML = '';
+
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'ans-btn';
+    btn.textContent = opt;
+    btn.onclick = () => {
+      if (G.quizAnswered) return;
+      G.quizAnswered = true;
+      const correct = (i === q.ans);
+      btn.classList.add(correct ? 'correct' : 'wrong');
+      bEl.querySelectorAll('.ans-btn').forEach((b,j)=>{
+        if(j!==i) b.classList.add(j===q.ans ? 'correct' : 'dim');
+      });
+
+      document.getElementById('cardBody').innerHTML =
+        `<b>${q.q}</b><br><br>` +
+        (correct ? '✅ <b style="color:#2ECC71">Correct!</b> ' : '❌ <b style="color:#EF5350">Not quite!</b> ') +
+        q.fact;
+
+      if (correct) { G.score += 150; updateUI(); spawnBurst(W()/2, H()/2, '#2ECC71', 20, .14); feedback(W()/2, H()*.35, '+150 Correct!', '#2ECC71'); }
+      else         { G.score = Math.max(0, G.score - 30); updateUI(); feedback(W()/2, H()*.35, '−30', '#EF5350'); }
+
+      const cont = document.createElement('button');
+      cont.className='cont-btn'; cont.textContent='Continue!';
+      cont.onclick=()=>{ closeCard(); G.state='idle'; };
+      bEl.innerHTML=''; bEl.appendChild(cont);
+    };
+    bEl.appendChild(btn);
+  });
+  openCard();
+}
+
+function showSpecialCard(sp) {
+  document.getElementById('cardIcon').textContent  = sp.icon;
+  document.getElementById('cardTitle').textContent = sp.label;
+  document.getElementById('cardBody').innerHTML    = sp.body;
+  const bEl = document.getElementById('cardBtns');
+  bEl.innerHTML = '';
+  const cont = document.createElement('button');
+  cont.className = 'cont-btn';
+
+  if (sp.effect === 'roll_again') {
+    cont.textContent = '☕ Roll again!';
+    cont.onclick = () => { closeCard(); G.state='idle'; rollDice(); };
+  } else if (sp.effect === 'skip_turn') {
+    G.skipTurn = true;
+    cont.textContent = '😴 Skip next turn...';
+    cont.onclick = () => { closeCard(); G.state='idle'; };
+  } else if (sp.effect === 'move_forward') {
+    const dest = Math.min(G.pos + 3, TOTAL);
+    cont.textContent = `⚡ Surge to square ${dest}!`;
+    cont.onclick = () => { closeCard(); animateJump(G.pos, dest, '#FFD700'); };
+  } else if (sp.effect === 'move_back') {
+    const dest = Math.max(G.pos - 2, 1);
+    cont.textContent = `😮 Move back to square ${dest}`;
+    cont.onclick = () => { closeCard(); animateJump(G.pos, dest, '#80DEEA', true); };
+  }
+
+  bEl.appendChild(cont);
+  openCard();
+}
+
+function animateJump(fromSq, toSq, color, isBack=false) {
+  G.state = 'moving';
+  const a = sqPos(fromSq), b = sqPos(toSq);
+  const start = performance.now();
+  const duration = 900;
+
+  spawnBurst(a.x, a.y, color, 18, .15);
+  setTimeout(() => spawnBurst(b.x, b.y, color, 22, .16), duration*.8);
+
+  function animFrame(now) {
+    const tt = clamp((now-start)/duration, 0, 1);
+    const ease = tt<.5 ? 2*tt*tt : -1+(4-2*tt)*tt;
+    G.tokenX = lerp(a.x, b.x, ease);
+    G.tokenY = lerp(a.y, b.y, ease) - Math.sin(tt*Math.PI)*60;
+    if (tt < 1) { requestAnimationFrame(animFrame); }
+    else {
+      G.pos = toSq;
+      G.tokenX = b.x; G.tokenY = b.y;
+      updateUI();
+      if (toSq === TOTAL) { showWin(); return; }
+      G.state = 'idle';
+      document.getElementById('rollBtn').disabled = false;
+      setInfo(isBack ? `You landed on square ${toSq}. Roll to continue!` : `You jumped to square ${toSq}! Roll to continue!`);
+    }
+  }
+  requestAnimationFrame(animFrame);
+}
+
+function openCard()  {
+  document.getElementById('card').classList.add('open');
+  document.getElementById('rollBtn').disabled = true;
+}
+function closeCard() {
+  document.getElementById('card').classList.remove('open');
+  document.getElementById('rollBtn').disabled = false;
+}
+
+function showWin() {
+  G.state = 'paused';
+  const el = document.getElementById('winScreen');
+  el.style.display = 'flex';
+  document.getElementById('winScore').textContent = `Score: ${G.score.toLocaleString()}`;
+  spawnBurst(W()/2, H()/2, '#FFD700', 40, .2);
+  setTimeout(() => spawnBurst(W()/2, H()/2, '#4FC3F7', 30, .18), 300);
+  setTimeout(() => spawnBurst(W()/2, H()/2, '#CE93D8', 30, .16), 600);
+}
+
+function restartGame() {
+  document.getElementById('winScreen').style.display = 'none';
+  G.pos = 1; G.score = 0; G.state = 'idle'; G.skipTurn = false;
+  const p = sqPos(1); G.tokenX = p.x; G.tokenY = p.y;
+  updateUI(); setInfo('Game restarted! Roll to begin.');
+  document.getElementById('rollBtn').disabled = false;
+}
+
+function startGame() {
+  document.getElementById('menu').style.display = 'none';
+  const p = sqPos(1); G.tokenX = p.x; G.tokenY = p.y;
+  updateUI(); G.state = 'idle';
+  document.getElementById('rollBtn').disabled = false;
+  setInfo('Roll the dice to send your action potential!');
+}
+
+// ── UI HELPERS ────────────────────────────────────────────────
+function updateUI() {
+  document.getElementById('scoreVal').textContent  = G.score.toLocaleString();
+  document.getElementById('squareNum').textContent = `${G.pos} / ${TOTAL}`;
+}
+function setInfo(txt) { document.getElementById('infoBox').innerHTML = txt; }
+function feedback(x,y,txt,col) {
+  const el = document.createElement('div'); el.className='fb';
+  el.style.cssText=`left:${x}px;top:${y}px;color:${col};text-shadow:0 0 8px ${col};transform:translateX(-50%)`;
+  el.textContent=txt; document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1100);
+}
+
 // ── INIT ──────────────────────────────────────────────────────
-updateScore();
+const initP = sqPos(1);
+G.tokenX = initP.x; G.tokenY = initP.y;
 requestAnimationFrame(loop);
 </script>
 </body>
