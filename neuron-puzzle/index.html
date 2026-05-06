@@ -1,0 +1,2154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SYNAPSE — Neural Circuit Game</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #020208;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  font-family: 'Courier New', Courier, monospace;
+  overflow: hidden;
+  color: #e0e0f0;
+}
+
+canvas { display: block; }
+
+#topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 56px;
+  background: linear-gradient(180deg, rgba(2,2,10,0.98) 60%, transparent 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+#levelTitle {
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: #4FC3F7;
+  text-transform: uppercase;
+}
+
+#levelName {
+  font-size: 15px;
+  color: #90CAF9;
+  font-weight: bold;
+  margin-top: 2px;
+}
+
+#scoreDisplay {
+  font-size: 22px;
+  font-weight: bold;
+  color: #FFD700;
+  text-shadow: 0 0 10px rgba(255,215,0,0.5);
+}
+
+#scoreLabel {
+  font-size: 10px;
+  color: #546E7A;
+  letter-spacing: 2px;
+  text-align: center;
+}
+
+#comboDisplay {
+  font-size: 13px;
+  color: #FF6B35;
+  text-align: right;
+  min-height: 18px;
+  text-shadow: 0 0 8px rgba(255,107,53,0.7);
+}
+
+#timerBar {
+  position: fixed;
+  top: 56px; left: 0; right: 0;
+  height: 3px;
+  background: rgba(255,255,255,0.05);
+  z-index: 10;
+}
+
+#timerFill {
+  height: 100%;
+  background: linear-gradient(90deg, #2ECC71, #F39C12, #E74C3C);
+  transition: width 0.1s linear;
+  width: 100%;
+}
+
+#bottomPanel {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: linear-gradient(0deg, rgba(2,2,10,0.99) 70%, transparent 100%);
+  padding: 12px 20px 16px;
+  z-index: 10;
+}
+
+#ntLabel {
+  font-size: 10px;
+  color: #37474F;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+#ntTokens {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.nt-token {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.15);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.3s;
+  font-size: 10px;
+  font-weight: bold;
+  text-align: center;
+  user-select: none;
+  flex-shrink: 0;
+  line-height: 1.2;
+  position: relative;
+}
+
+.nt-token .nt-abbr {
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.nt-token .nt-name {
+  font-size: 8px;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+.nt-token:hover {
+  transform: scale(1.12) translateY(-4px);
+}
+
+.nt-token.selected {
+  transform: scale(1.18) translateY(-6px);
+  border-color: white;
+  border-width: 3px;
+}
+
+.nt-token.depleted {
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+.nt-count {
+  position: absolute;
+  top: -4px; right: -4px;
+  background: rgba(0,0,0,0.8);
+  border-radius: 50%;
+  width: 18px; height: 18px;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+#instructionBox {
+  position: fixed;
+  bottom: 102px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(2,2,10,0.8);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 7px 16px;
+  font-size: 12px;
+  color: #546E7A;
+  pointer-events: none;
+  z-index: 9;
+  white-space: nowrap;
+}
+
+#fireBtn {
+  position: fixed;
+  bottom: 108px;
+  right: 24px;
+  background: rgba(46, 204, 113, 0.15);
+  border: 2px solid #2ECC71;
+  color: #2ECC71;
+  padding: 11px 26px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  display: none;
+  pointer-events: all;
+  z-index: 20;
+  animation: firePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes firePulse {
+  0%,100% { box-shadow: 0 0 8px rgba(46,204,113,0.4); }
+  50% { box-shadow: 0 0 25px rgba(46,204,113,0.8), 0 0 45px rgba(46,204,113,0.2); }
+}
+
+#overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  background: rgba(2,2,10,0.85);
+  backdrop-filter: blur(4px);
+}
+
+#overlayCard {
+  background: linear-gradient(160deg, rgba(10,10,30,0.98), rgba(5,5,20,0.98));
+  border: 1px solid rgba(100,181,246,0.25);
+  border-radius: 16px;
+  padding: 36px 44px;
+  text-align: center;
+  max-width: 520px;
+  width: 90%;
+  box-shadow: 0 0 60px rgba(100,181,246,0.1), inset 0 0 30px rgba(0,0,0,0.3);
+}
+
+#overlayCard h1 {
+  font-size: 32px;
+  letter-spacing: 6px;
+  color: #4FC3F7;
+  text-shadow: 0 0 20px rgba(79,195,247,0.6);
+  margin-bottom: 6px;
+}
+
+#overlayCard .subtitle {
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: #37474F;
+  margin-bottom: 24px;
+}
+
+#overlayCard h2 {
+  font-size: 22px;
+  color: #64B5F6;
+  margin-bottom: 10px;
+}
+
+#overlayBody {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #78909C;
+  margin-bottom: 18px;
+}
+
+#overlayFact {
+  background: rgba(0,60,30,0.25);
+  border: 1px solid rgba(102,187,106,0.2);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 12px;
+  color: #66BB6A;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  text-align: left;
+  display: none;
+}
+
+#overlayFact::before {
+  content: '🧬 ';
+}
+
+#overlayScore {
+  font-size: 28px;
+  color: #FFD700;
+  font-weight: bold;
+  margin-bottom: 6px;
+  display: none;
+  text-shadow: 0 0 15px rgba(255,215,0,0.5);
+}
+
+#overlayStars {
+  font-size: 28px;
+  margin-bottom: 16px;
+  display: none;
+}
+
+.btn {
+  background: rgba(79,195,247,0.12);
+  border: 1px solid rgba(79,195,247,0.4);
+  color: #4FC3F7;
+  padding: 11px 32px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+  margin: 4px;
+}
+
+.btn:hover {
+  background: rgba(79,195,247,0.25);
+  box-shadow: 0 0 15px rgba(79,195,247,0.3);
+}
+
+.btn.danger {
+  border-color: rgba(239,83,80,0.4);
+  color: #EF5350;
+  background: rgba(239,83,80,0.1);
+}
+
+.btn.danger:hover {
+  background: rgba(239,83,80,0.2);
+  box-shadow: 0 0 15px rgba(239,83,80,0.3);
+}
+
+#levelSelect {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 16px 0;
+}
+
+.level-btn {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(79,195,247,0.3);
+  background: rgba(79,195,247,0.08);
+  color: #4FC3F7;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+
+.level-btn:hover {
+  background: rgba(79,195,247,0.2);
+  transform: scale(1.1);
+}
+
+.level-btn.locked {
+  border-color: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.15);
+  cursor: not-allowed;
+}
+
+.level-btn.locked:hover { transform: none; background: rgba(79,195,247,0.08); }
+
+#tooltip {
+  position: fixed;
+  background: rgba(2,2,10,0.97);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 11px;
+  line-height: 1.6;
+  pointer-events: none;
+  display: none;
+  max-width: 230px;
+  z-index: 200;
+  color: #90A4AE;
+}
+
+#tooltip strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+#oscContainer {
+  position: fixed;
+  bottom: 108px;
+  left: 16px;
+  z-index: 9;
+}
+
+#oscLabel {
+  font-size: 9px;
+  color: #1B5E20;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+#oscCanvas {
+  border: 1px solid rgba(0,200,83,0.2);
+  border-radius: 4px;
+  background: rgba(0,0,0,0.6);
+}
+
+.feedback-text {
+  position: fixed;
+  pointer-events: none;
+  font-weight: bold;
+  font-size: 18px;
+  z-index: 100;
+  animation: floatUp 1.2s ease-out forwards;
+}
+
+@keyframes floatUp {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-60px) scale(1.2); }
+}
+
+#levelProgress {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.prog-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  transition: background 0.3s;
+}
+
+.prog-dot.done { background: #2ECC71; }
+.prog-dot.current { background: #4FC3F7; }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="topbar">
+  <div>
+    <div id="levelTitle">LEVEL 1</div>
+    <div id="levelName">Knee Jerk Reflex</div>
+  </div>
+  <div style="display:flex; align-items:center; gap:20px;">
+    <div id="levelProgress"></div>
+    <div style="text-align:center;">
+      <div id="scoreLabel">SCORE</div>
+      <div id="scoreDisplay">0</div>
+    </div>
+    <div style="text-align:right;">
+      <div id="comboDisplay"></div>
+      <div id="timerDisplay" style="font-size:13px; color:#546E7A;">0:00</div>
+    </div>
+  </div>
+</div>
+
+<div id="timerBar"><div id="timerFill"></div></div>
+
+<div id="oscContainer">
+  <div id="oscLabel">MEMBRANE POTENTIAL</div>
+  <canvas id="oscCanvas" width="190" height="70"></canvas>
+</div>
+
+<button id="fireBtn" onclick="fireCircuit()">⚡ FIRE!</button>
+
+<div id="instructionBox">Select a neurotransmitter, then click a synapse gap</div>
+
+<div id="bottomPanel">
+  <div id="ntLabel">Available Neurotransmitters</div>
+  <div id="ntTokens"></div>
+</div>
+
+<div id="overlay">
+  <div id="overlayCard">
+    <h1>SYNAPSE</h1>
+    <div class="subtitle">NEURAL CIRCUIT PUZZLE GAME</div>
+    <div id="overlayBody">
+      Route action potentials through the brain.<br>
+      Match neurotransmitters to complete synaptic circuits.<br><br>
+      <span style="color:#4FC3F7;">Select a neurotransmitter below,<br>then click a glowing synapse gap to assign it.</span>
+    </div>
+    <div id="overlayFact"></div>
+    <div id="overlayScore"></div>
+    <div id="overlayStars"></div>
+    <div id="overlayButtons">
+      <button class="btn" onclick="overlayAction()">START GAME</button>
+    </div>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+// ============================================================
+//  SYNAPSE — Neural Circuit Puzzle Game
+//  Neurophysiologically Accurate Edition
+// ============================================================
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const oscCanvas = document.getElementById('oscCanvas');
+const oscCtx = oscCanvas.getContext('2d');
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const W = canvas.width, H = canvas.height;
+const CX = W/2, CH = H/2;
+const TOP_H = 59, BOT_H = 98;
+const PLAY_W = W, PLAY_H = H - TOP_H - BOT_H;
+const PLAY_Y = TOP_H;
+
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+
+// ============================================================
+//  NEUROTRANSMITTER DATA
+// ============================================================
+
+const NT = {
+  GLU: {
+    key: 'GLU', abbr: 'Glu', name: 'Glutamate',
+    color: '#FFD700', glow: 'rgba(255,215,0,0.5)',
+    effect: 'excitatory',
+    receptor: 'AMPA / NMDA',
+    desc: 'Primary excitatory NT in the CNS. Activates AMPA & NMDA receptors, causing Na⁺ influx and depolarization.',
+    mv: +18
+  },
+  GABA: {
+    key: 'GABA', abbr: 'GABA', name: 'GABA',
+    color: '#FF6B6B', glow: 'rgba(255,107,107,0.5)',
+    effect: 'inhibitory',
+    receptor: 'GABA-A / GABA-B',
+    desc: 'Primary inhibitory NT. Opens Cl⁻ channels via GABA-A receptors, hyperpolarizing the membrane.',
+    mv: -12
+  },
+  ACH: {
+    key: 'ACH', abbr: 'ACh', name: 'Acetylcholine',
+    color: '#00CED1', glow: 'rgba(0,206,209,0.5)',
+    effect: 'excitatory',
+    receptor: 'nAChR / mAChR',
+    desc: 'Neuromuscular junction NT. Nicotinic AChR activation depolarizes the motor end plate, triggering muscle contraction.',
+    mv: +22
+  },
+  DA: {
+    key: 'DA', abbr: 'DA', name: 'Dopamine',
+    color: '#CE93D8', glow: 'rgba(206,147,216,0.5)',
+    effect: 'modulatory',
+    receptor: 'D1 / D2',
+    desc: 'Reward and motor modulator. D1 excitatory (↑cAMP), D2 inhibitory (↓cAMP). Key in reward prediction.',
+    mv: +10
+  },
+  SP: {
+    key: 'SP', abbr: 'SP', name: 'Substance P',
+    color: '#FF69B4', glow: 'rgba(255,105,180,0.5)',
+    effect: 'excitatory',
+    receptor: 'NK1',
+    desc: 'Pain signal amplifier. Released by C-fibers; binds NK1 receptors in dorsal horn, potentiating pain transmission.',
+    mv: +14
+  },
+  NE: {
+    key: 'NE', abbr: 'NE', name: 'Norepinephrine',
+    color: '#FFA040', glow: 'rgba(255,160,64,0.5)',
+    effect: 'excitatory',
+    receptor: 'α₁ / β₁',
+    desc: 'Fight-or-flight mediator. Released by sympathetic postganglionic neurons; increases heart rate and arousal.',
+    mv: +10
+  },
+  SERO: {
+    key: 'SERO', abbr: '5-HT', name: 'Serotonin',
+    color: '#69FF69', glow: 'rgba(105,255,105,0.5)',
+    effect: 'modulatory',
+    receptor: '5-HT₁ / 5-HT₂',
+    desc: 'Mood and sleep regulator. Modulates pain, mood, appetite. 90% produced in GI tract.',
+    mv: +8
+  }
+};
+
+// ============================================================
+//  NEURON TYPE VISUALS
+// ============================================================
+
+const NTYPE = {
+  SENSORY:    { color: '#4FC3F7', glow: 'rgba(79,195,247,0.4)',   label: 'Sensory' },
+  INTER:      { color: '#CE93D8', glow: 'rgba(206,147,216,0.4)',  label: 'Interneuron' },
+  MOTOR:      { color: '#81C784', glow: 'rgba(129,199,132,0.4)',  label: 'Motor' },
+  INHIBITORY: { color: '#EF9A9A', glow: 'rgba(239,154,154,0.4)', label: 'Inhibitory' },
+  RELAY:      { color: '#80DEEA', glow: 'rgba(128,222,234,0.4)', label: 'Relay' },
+  DOPAMINE:   { color: '#CE93D8', glow: 'rgba(206,147,216,0.4)', label: 'Dopaminergic' },
+  CORTICAL:   { color: '#FFCC02', glow: 'rgba(255,204,2,0.4)',   label: 'Cortical' },
+  MUSCLE:     { color: '#A5D6A7', glow: 'rgba(165,214,167,0.5)', label: 'Muscle Fiber' },
+};
+
+// ============================================================
+//  UTILITY
+// ============================================================
+
+const lerp = (a, b, t) => a + (b - a) * t;
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const rand = (lo, hi) => lo + Math.random() * (hi - lo);
+const rgba = (hex, a) => {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+};
+
+function glow(ctx, color, blur) {
+  ctx.shadowColor = color;
+  ctx.shadowBlur = blur;
+}
+
+function noGlow(ctx) {
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+}
+
+// ============================================================
+//  PARTICLE SYSTEM
+// ============================================================
+
+class Particle {
+  constructor(x, y, vx, vy, color, life, size) {
+    this.x = x; this.y = y;
+    this.vx = vx; this.vy = vy;
+    this.color = color;
+    this.life = life; this.maxLife = life;
+    this.size = size || 3;
+  }
+  update(dt) {
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.vy += 0.02 * dt;
+    this.life -= dt;
+  }
+  draw(ctx) {
+    const a = clamp(this.life / this.maxLife, 0, 1);
+    ctx.save();
+    ctx.globalAlpha = a;
+    glow(ctx, this.color, 6);
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size * a, 0, Math.PI*2);
+    ctx.fill();
+    noGlow(ctx);
+    ctx.restore();
+  }
+}
+
+const particles = [];
+
+function spawnBurst(x, y, color, n, speed) {
+  for (let i = 0; i < n; i++) {
+    const a = (Math.PI*2 * i/n) + rand(-0.3, 0.3);
+    const s = speed * rand(0.5, 1.5);
+    particles.push(new Particle(x, y, Math.cos(a)*s, Math.sin(a)*s, color, rand(400, 900), rand(2,4)));
+  }
+}
+
+function spawnVesicles(x1, y1, x2, y2, color, n) {
+  for (let i = 0; i < n; i++) {
+    const t = rand(0, 1);
+    const px = lerp(x1, x2, t) + rand(-8, 8);
+    const py = lerp(y1, y2, t) + rand(-8, 8);
+    const dx = x2 - x1, dy = y2 - y1;
+    const len = Math.hypot(dx, dy);
+    const spd = rand(0.04, 0.12);
+    particles.push(new Particle(px, py, dx/len*spd, dy/len*spd, color, rand(600, 1400), rand(2,3.5)));
+  }
+}
+
+// ============================================================
+//  NEURON
+// ============================================================
+
+class Neuron {
+  constructor(cfg) {
+    this.id       = cfg.id;
+    this.type     = cfg.type;          // NTYPE key
+    this.x        = cfg.x;
+    this.y        = cfg.y;
+    this.r        = cfg.r || 32;
+    this.label    = cfg.label || '';
+    this.sublabel = cfg.sublabel || '';
+    this.myelinated = cfg.myelinated || false;
+    this.fired    = false;
+    this.fireTime = 0;
+    this.pulse    = 0;               // 0..1 breathing
+    this.membranePotential = -70;    // mV
+  }
+
+  get typeData() { return NTYPE[this.type]; }
+
+  update(t) {
+    this.pulse = Math.sin(t * 0.0015 + this.x * 0.01) * 0.5 + 0.5;
+    if (this.fired) {
+      const dt = t - this.fireTime;
+      if (dt > 1200) this.fired = false;
+    }
+  }
+
+  draw(ctx, t) {
+    const { color, glow: gc } = this.typeData;
+    const x = this.x, y = this.y, r = this.r;
+    const breathe = 1 + this.pulse * 0.05;
+    const fireAmt = this.fired ? clamp(1 - (t - this.fireTime) / 800, 0, 1) : 0;
+
+    ctx.save();
+
+    // Outer glow
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 18 + this.pulse * 10 + fireAmt * 40;
+
+    // Cell body
+    const grad = ctx.createRadialGradient(x - r*0.3, y - r*0.3, 0, x, y, r * breathe);
+    grad.addColorStop(0, rgba(color, 0.55 + fireAmt * 0.4));
+    grad.addColorStop(0.6, rgba(color, 0.18 + fireAmt * 0.25));
+    grad.addColorStop(1, rgba(color, 0.04));
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, r * breathe, 0, Math.PI*2);
+    ctx.fill();
+
+    // Border ring
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = rgba(color, 0.5 + fireAmt * 0.5);
+    ctx.lineWidth = 1.5 + fireAmt * 2;
+    ctx.beginPath();
+    ctx.arc(x, y, r * breathe, 0, Math.PI*2);
+    ctx.stroke();
+
+    // Nucleus
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8 + fireAmt * 20;
+    const nucGrad = ctx.createRadialGradient(x - r*0.12, y - r*0.12, 0, x, y, r * 0.38);
+    nucGrad.addColorStop(0, rgba(color, 0.9 + fireAmt * 0.1));
+    nucGrad.addColorStop(1, rgba(color, 0.2));
+    ctx.fillStyle = nucGrad;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 0.38, 0, Math.PI*2);
+    ctx.fill();
+
+    // Fire flash ring
+    if (fireAmt > 0.01) {
+      ctx.shadowBlur = 20;
+      ctx.strokeStyle = rgba('#FFFFFF', fireAmt * 0.8);
+      ctx.lineWidth = 3;
+      const fr = r + (1 - fireAmt) * 40;
+      ctx.beginPath();
+      ctx.arc(x, y, fr, 0, Math.PI*2);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+
+    // Label (supports \n in label)
+    ctx.save();
+    ctx.font = `bold 11px 'Courier New'`;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = rgba(color, 0.9);
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 6;
+    const lines = this.label.split('\n');
+    lines.forEach((line, i) => {
+      ctx.fillText(line, x, y + r + 16 + i * 13);
+    });
+    if (this.sublabel) {
+      ctx.font = `9px 'Courier New'`;
+      ctx.fillStyle = rgba(color, 0.55);
+      ctx.shadowBlur = 0;
+      ctx.fillText(this.sublabel, x, y + r + 16 + lines.length * 13 + 2);
+    }
+    ctx.restore();
+  }
+
+  fireNow(t) {
+    this.fired = true;
+    this.fireTime = t;
+    this.membranePotential = 40;
+    spawnBurst(this.x, this.y, this.typeData.color, 14, 0.15);
+  }
+
+  isHit(x, y) {
+    return Math.hypot(this.x - x, this.y - y) < this.r + 10;
+  }
+}
+
+// ============================================================
+//  SYNAPSE
+// ============================================================
+
+class Synapse {
+  constructor(cfg) {
+    this.pre   = cfg.pre;      // Neuron
+    this.post  = cfg.post;     // Neuron
+    this.ntRequired = cfg.nt;  // NT key string
+    this.ntAssigned = null;
+    this.myelinated = cfg.myelinated || false;
+    this.id    = `${cfg.pre.id}-${cfg.post.id}`;
+    this.pulsePhase = Math.random() * Math.PI * 2;
+    this.wrongFlash = 0;
+    this.rightFlash = 0;
+    this.inhibitory = cfg.inhibitory || false;
+  }
+
+  get isFilled() { return this.ntAssigned !== null; }
+
+  get midpoint() {
+    const dx = this.post.x - this.pre.x;
+    const dy = this.post.y - this.pre.y;
+    const len = Math.hypot(dx, dy);
+    const nx = -dy / len, ny = dx / len;
+    return {
+      x: (this.pre.x + this.post.x) / 2 + nx * 12,
+      y: (this.pre.y + this.post.y) / 2 + ny * 12
+    };
+  }
+
+  get gapPoint() {
+    // Point along the axon near the post synaptic neuron
+    const dx = this.post.x - this.pre.x;
+    const dy = this.post.y - this.pre.y;
+    const len = Math.hypot(dx, dy);
+    const t = (len - this.post.r - 28) / len;
+    return {
+      x: this.pre.x + dx * t,
+      y: this.pre.y + dy * t
+    };
+  }
+
+  isGapHit(mx, my) {
+    if (this.isFilled) return false;
+    const gp = this.gapPoint;
+    return Math.hypot(gp.x - mx, gp.y - my) < 22;
+  }
+
+  assign(ntKey, t) {
+    const data = NT[ntKey];
+    const required = NT[this.ntRequired];
+    if (!data || !required) return false;
+
+    const correct = (ntKey === this.ntRequired);
+    if (correct) {
+      this.ntAssigned = ntKey;
+      this.rightFlash = t;
+      return true;
+    } else {
+      this.wrongFlash = t;
+      return false;
+    }
+  }
+
+  draw(ctx, t) {
+    const pre = this.pre, post = this.post;
+    const dx = post.x - pre.x, dy = post.y - pre.y;
+    const len = Math.hypot(dx, dy);
+    const ux = dx/len, uy = dy/len;
+
+    // Points: start just outside pre soma, end just inside gap or post soma
+    const startX = pre.x + ux * (pre.r + 4);
+    const startY = pre.y + uy * (pre.r + 4);
+    const endX = post.x - ux * (post.r + 4);
+    const endY = post.y - uy * (post.r + 4);
+
+    const ntColor = this.isFilled ? NT[this.ntAssigned].color : '#2E3A4A';
+    const lineA = this.isFilled ? 0.65 : 0.25;
+    const wrongAmt = this.wrongFlash ? clamp(1 - (t - this.wrongFlash)/500, 0, 1) : 0;
+    const rightAmt = this.rightFlash ? clamp(1 - (t - this.rightFlash)/700, 0, 1) : 0;
+
+    ctx.save();
+
+    // Myelin sheath
+    if (this.myelinated) {
+      const segCount = Math.floor(len / 24);
+      ctx.lineCap = 'butt';
+      for (let i = 0; i < segCount; i++) {
+        const t0 = (i + 0.1) / segCount;
+        const t1 = (i + 0.85) / segCount;
+        ctx.strokeStyle = rgba('#B0BEC5', 0.2);
+        ctx.lineWidth = 7;
+        ctx.beginPath();
+        ctx.moveTo(startX + dx*t0, startY + dy*t0);
+        ctx.lineTo(startX + dx*t1, startY + dy*t1);
+        ctx.stroke();
+      }
+    }
+
+    // Main axon line
+    ctx.shadowColor = this.isFilled ? ntColor : '#2E3A4A';
+    ctx.shadowBlur = this.isFilled ? 8 : 3;
+    ctx.strokeStyle = rgba(ntColor, lineA);
+    ctx.lineWidth = this.myelinated ? 2.5 : 2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+
+    if (!this.isFilled) {
+      // Draw up to gap
+      const gp = this.gapPoint;
+      const gapDist = Math.hypot(gp.x - startX, gp.y - startY);
+      const lineT = (gapDist - 22) / len;
+      ctx.lineTo(startX + dx * lineT, startY + dy * lineT);
+      ctx.stroke();
+
+      // Draw from gap to post
+      const postT = (Math.hypot(endX - startX, endY - startY)) / len;
+      ctx.beginPath();
+      ctx.moveTo(startX + dx * (lineT + 44/len), startY + dy * (lineT + 44/len));
+      ctx.lineTo(endX, endY);
+      ctx.stroke();
+
+      // Synapse gap indicator
+      this.drawGapIndicator(ctx, t);
+    } else {
+      ctx.lineTo(endX, endY);
+      ctx.stroke();
+
+      // Filled synapse terminal
+      this.drawTerminal(ctx, t, ntColor, rightAmt);
+    }
+
+    // Wrong flash
+    if (wrongAmt > 0) {
+      const gp = this.gapPoint;
+      ctx.shadowColor = '#FF4444';
+      ctx.shadowBlur = 20 * wrongAmt;
+      ctx.strokeStyle = rgba('#FF4444', wrongAmt);
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      const cr = 18;
+      ctx.moveTo(gp.x - cr, gp.y - cr);
+      ctx.lineTo(gp.x + cr, gp.y + cr);
+      ctx.moveTo(gp.x + cr, gp.y - cr);
+      ctx.lineTo(gp.x - cr, gp.y + cr);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+
+    // Arrow toward post
+    if (this.isFilled) {
+      const arrowT = 0.75;
+      const ax = startX + dx * arrowT;
+      const ay = startY + dy * arrowT;
+      this.drawArrow(ctx, ax, ay, ux, uy, ntColor);
+    }
+  }
+
+  drawArrow(ctx, x, y, ux, uy, color) {
+    const size = 7;
+    const perp = { x: -uy, y: ux };
+    ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = rgba(color, 0.7);
+    ctx.beginPath();
+    ctx.moveTo(x + ux*size, y + uy*size);
+    ctx.lineTo(x - ux*size + perp.x*size*0.6, y - uy*size + perp.y*size*0.6);
+    ctx.lineTo(x - ux*size - perp.x*size*0.6, y - uy*size - perp.y*size*0.6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  drawGapIndicator(ctx, t) {
+    const gp = this.gapPoint;
+    const phase = t * 0.003 + this.pulsePhase;
+    const pulse = Math.sin(phase) * 0.5 + 0.5;
+
+    ctx.save();
+    // Outer pulse ring
+    ctx.shadowColor = '#F39C12';
+    ctx.shadowBlur = 10 + pulse * 20;
+    ctx.strokeStyle = rgba('#F39C12', 0.3 + pulse * 0.5);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(gp.x, gp.y, 16 + pulse * 4, 0, Math.PI*2);
+    ctx.stroke();
+
+    // Inner circle
+    ctx.shadowBlur = 8;
+    ctx.strokeStyle = rgba('#F39C12', 0.6 + pulse * 0.4);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(gp.x, gp.y, 10, 0, Math.PI*2);
+    ctx.stroke();
+
+    // Question mark / "?"
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = rgba('#F39C12', 0.7 + pulse * 0.3);
+    ctx.font = 'bold 13px Courier New';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('?', gp.x, gp.y);
+
+    ctx.restore();
+  }
+
+  drawTerminal(ctx, t, color, flashAmt) {
+    // Pre-synaptic terminal (bouton)
+    const pre = this.pre, post = this.post;
+    const dx = post.x - pre.x, dy = post.y - pre.y;
+    const len = Math.hypot(dx, dy);
+    const ux = dx/len, uy = dy/len;
+
+    const bx = post.x - ux * (post.r + 18);
+    const by = post.y - uy * (post.r + 18);
+
+    ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8 + flashAmt * 20;
+
+    // Terminal bulb
+    ctx.fillStyle = rgba(color, 0.4 + flashAmt * 0.4);
+    ctx.beginPath();
+    ctx.arc(bx, by, 7, 0, Math.PI*2);
+    ctx.fill();
+
+    // Vesicle dots inside bulb
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2 + t * 0.002;
+      const vx = bx + Math.cos(a) * 3;
+      const vy = by + Math.sin(a) * 3;
+      ctx.fillStyle = rgba(color, 0.8);
+      ctx.beginPath();
+      ctx.arc(vx, vy, 1.5, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // Receptor label
+    const ntData = NT[this.ntAssigned];
+    if (ntData) {
+      const rx = post.x - ux * (post.r + 6);
+      const ry = post.y - uy * (post.r + 6);
+      const perp = { x: -uy * 12, y: ux * 12 };
+      ctx.font = '8px Courier New';
+      ctx.fillStyle = rgba(color, 0.55);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowBlur = 0;
+      ctx.fillText(ntData.receptor, rx + perp.x, ry + perp.y);
+    }
+
+    ctx.restore();
+  }
+}
+
+// ============================================================
+//  ACTION POTENTIAL TRACER
+// ============================================================
+
+class APTracer {
+  constructor(path, myelinatedMap) {
+    this.path = path;       // array of Neurons
+    this.myelinatedMap = myelinatedMap || {};
+    this.segIdx = 0;        // which segment we're on
+    this.segT = 0;          // 0..1 progress on this segment
+    this.done = false;
+    this.startTime = null;
+    this.trailPoints = [];
+  }
+
+  get speed() {
+    // myelinated = saltatory conduction, much faster
+    const synapseKey = this.path[this.segIdx]?.id + '-' + this.path[this.segIdx+1]?.id;
+    return this.myelinatedMap[synapseKey] ? 0.0022 : 0.00095;
+  }
+
+  update(dt, t) {
+    if (this.done) return;
+    if (!this.startTime) this.startTime = t;
+
+    this.segT += dt * this.speed;
+
+    if (this.segT >= 1) {
+      this.segT = 0;
+      this.segIdx++;
+      if (this.segIdx >= this.path.length - 1) {
+        this.done = true;
+        this.segIdx = this.path.length - 2;
+        this.segT = 1;
+        return;
+      }
+      // Fire the next neuron
+      const nextNeuron = this.path[this.segIdx + 1];
+      if (nextNeuron) {
+        nextNeuron.fireNow(t);
+        const synKey = this.path[this.segIdx].id + '-' + nextNeuron.id;
+        // spawn vesicle particles at the synapse
+        const sx = (this.path[this.segIdx].x + nextNeuron.x) / 2;
+        const sy = (this.path[this.segIdx].y + nextNeuron.y) / 2;
+        const ntColor = game.assignedNTs[synKey] ? NT[game.assignedNTs[synKey]]?.color || '#FFF' : '#FFF';
+        spawnVesicles(this.path[this.segIdx].x, this.path[this.segIdx].y,
+                      nextNeuron.x, nextNeuron.y, ntColor, 20);
+      }
+    }
+
+    // Track trail
+    if (this.path[this.segIdx] && this.path[this.segIdx+1]) {
+      const a = this.path[this.segIdx], b = this.path[this.segIdx+1];
+      const x = lerp(a.x, b.x, this.segT);
+      const y = lerp(a.y, b.y, this.segT);
+      this.trailPoints.push({ x, y, t });
+      if (this.trailPoints.length > 30) this.trailPoints.shift();
+    }
+  }
+
+  draw(ctx, t) {
+    if (!this.path[this.segIdx] || !this.path[this.segIdx+1]) return;
+
+    const a = this.path[this.segIdx], b = this.path[this.segIdx+1];
+    const px = lerp(a.x, b.x, this.segT);
+    const py = lerp(a.y, b.y, this.segT);
+
+    // Trail
+    for (let i = 0; i < this.trailPoints.length; i++) {
+      const tp = this.trailPoints[i];
+      const age = (t - tp.t);
+      const a2 = clamp(1 - age / 300, 0, 1);
+      if (a2 <= 0) continue;
+      ctx.save();
+      ctx.globalAlpha = a2 * 0.5;
+      ctx.shadowColor = '#FFFFFF';
+      ctx.shadowBlur = 15;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(tp.x, tp.y, 4 * a2, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Main pulse
+    ctx.save();
+    ctx.shadowColor = '#FFFFFF';
+    ctx.shadowBlur = 40;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(px, py, 9, 0, Math.PI*2);
+    ctx.fill();
+
+    // Inner bright core
+    ctx.shadowBlur = 15;
+    ctx.fillStyle = '#E3F2FD';
+    ctx.beginPath();
+    ctx.arc(px, py, 5, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ============================================================
+//  OSCILLOSCOPE
+// ============================================================
+
+class Oscilloscope {
+  constructor() {
+    this.data = new Float32Array(190).fill(-70);
+    this.pos = 0;
+    this.triggered = false;
+    this.triggerT = 0;
+    this.phase = 'resting';  // resting, depolarizing, repolarizing, hyperpolarizing
+    this.phaseProgress = 0;
+  }
+
+  trigger(t) {
+    this.triggered = true;
+    this.triggerT = t;
+    this.phase = 'depolarizing';
+    this.phaseProgress = 0;
+  }
+
+  update(dt) {
+    if (!this.triggered) {
+      // Resting: flat line at -70mV with tiny noise
+      const v = -70 + (Math.random() - 0.5) * 1.5;
+      this.data[this.pos % 190] = v;
+      this.pos++;
+      return;
+    }
+
+    this.phaseProgress += dt * 0.006;
+    let v = -70;
+
+    if (this.phase === 'depolarizing') {
+      v = lerp(-70, 40, clamp(this.phaseProgress / 0.3, 0, 1));
+      if (this.phaseProgress >= 0.3) {
+        this.phase = 'repolarizing';
+        this.phaseProgress = 0;
+      }
+    } else if (this.phase === 'repolarizing') {
+      v = lerp(40, -80, clamp(this.phaseProgress / 0.4, 0, 1));
+      if (this.phaseProgress >= 0.4) {
+        this.phase = 'hyperpolarizing';
+        this.phaseProgress = 0;
+      }
+    } else if (this.phase === 'hyperpolarizing') {
+      v = lerp(-80, -70, clamp(this.phaseProgress / 0.3, 0, 1));
+      if (this.phaseProgress >= 0.3) {
+        this.phase = 'resting';
+        this.phaseProgress = 0;
+        this.triggered = false;
+      }
+    }
+
+    this.data[this.pos % 190] = v;
+    this.pos++;
+  }
+
+  draw(oscCtx) {
+    const w = 190, h = 70;
+    oscCtx.clearRect(0, 0, w, h);
+
+    // BG grid
+    oscCtx.strokeStyle = 'rgba(0,200,83,0.08)';
+    oscCtx.lineWidth = 1;
+    for (let x = 0; x < w; x += 38) {
+      oscCtx.beginPath(); oscCtx.moveTo(x, 0); oscCtx.lineTo(x, h); oscCtx.stroke();
+    }
+    for (let y = 0; y < h; y += 14) {
+      oscCtx.beginPath(); oscCtx.moveTo(0, y); oscCtx.lineTo(w, y); oscCtx.stroke();
+    }
+
+    // Threshold line
+    const threshY = h - ((55) / 140) * h;  // -55mV threshold
+    oscCtx.strokeStyle = 'rgba(255,200,0,0.2)';
+    oscCtx.setLineDash([3, 3]);
+    oscCtx.beginPath(); oscCtx.moveTo(0, threshY); oscCtx.lineTo(w, threshY); oscCtx.stroke();
+    oscCtx.setLineDash([]);
+
+    // AP waveform
+    oscCtx.save();
+    oscCtx.shadowColor = '#00C853';
+    oscCtx.shadowBlur = 6;
+    oscCtx.strokeStyle = '#00E676';
+    oscCtx.lineWidth = 1.5;
+    oscCtx.beginPath();
+
+    for (let i = 0; i < w; i++) {
+      const idx = (this.pos - w + i + this.data.length) % this.data.length;
+      const mv = this.data[idx];
+      // Map -80..+45 → h..0
+      const y = h - ((mv + 80) / 125) * h;
+      if (i === 0) oscCtx.moveTo(i, y);
+      else oscCtx.lineTo(i, y);
+    }
+    oscCtx.stroke();
+    oscCtx.restore();
+
+    // mV label
+    oscCtx.fillStyle = 'rgba(0,200,83,0.4)';
+    oscCtx.font = '8px Courier New';
+    oscCtx.fillText('+40', 2, 8);
+    oscCtx.fillText('-55', 2, threshY - 2);
+    oscCtx.fillText('-70', 2, h - 4);
+  }
+}
+
+// ============================================================
+//  LEVEL DEFINITIONS
+// ============================================================
+
+// Helper: positions are fractions of PLAY area, centered
+function pos(fx, fy) {
+  return {
+    x: CX + (fx - 0.5) * PLAY_W * 0.82,
+    y: PLAY_Y + 30 + fy * (PLAY_H - 60)
+  };
+}
+
+const LEVELS = [
+  // ─────────────────────────────────────────────────────────
+  // LEVEL 1: Knee-Jerk Reflex Arc
+  // ─────────────────────────────────────────────────────────
+  {
+    title: 'Level 1',
+    name: 'Knee-Jerk Reflex',
+    description: 'The patellar reflex — a monosynaptic arc. Stretching the muscle activates a sensory neuron that DIRECTLY synapses onto a motor neuron. No brain required!',
+    fact: 'The knee-jerk is one of the FASTEST reflexes because it\'s monosynaptic — just ONE synapse, no interneurons. Signal travels from muscle spindle to spinal cord and back in ~25ms.',
+    timeLimit: 45,
+    path: ['N1','N2','N3'],
+    neurons: [
+      { id:'N1', type:'SENSORY', ...pos(0.1, 0.48), r:30, label:'Ia Afferent', sublabel:'Muscle Spindle', myelinated:true },
+      { id:'N2', type:'INTER',   ...pos(0.5, 0.48), r:32, label:'Interneuron', sublabel:'Dorsal Horn', myelinated:false },
+      { id:'N3', type:'MOTOR',   ...pos(0.9, 0.48), r:30, label:'α-Motor Neuron', sublabel:'Ventral Horn', myelinated:true },
+    ],
+    synapses: [
+      { pre:'N1', post:'N2', nt:'GLU', myelinated:true },
+      { pre:'N2', post:'N3', nt:'GLU', myelinated:false },
+    ],
+    availableNTs: ['GLU', 'GABA', 'ACH'],
+    completionText: 'The action potential fires from the muscle spindle, travels via the myelinated Ia fiber, depolarizes the interneuron and motor neuron via glutamate, then exits to contract the quadriceps. KNEE JERK!',
+  },
+
+  // ─────────────────────────────────────────────────────────
+  // LEVEL 2: Pain Pathway
+  // ─────────────────────────────────────────────────────────
+  {
+    title: 'Level 2',
+    name: 'Pain Pathway',
+    description: 'Nociceptors detect tissue damage and relay pain up the spinothalamic tract to conscious perception. Substance P amplifies the signal at the spinal cord.',
+    fact: 'Substance P was discovered in 1931. Its name literally means "Preparation P" — it was substance number P in the original fractionation experiment. It\'s key to "wind-up" — why pain can intensify over time.',
+    timeLimit: 50,
+    path: ['N1','N2','N3','N4'],
+    neurons: [
+      { id:'N1', type:'SENSORY', ...pos(0.08, 0.5), r:28, label:'Nociceptor', sublabel:'C-fiber (slow)' },
+      { id:'N2', type:'INTER',   ...pos(0.36, 0.5), r:30, label:'Dorsal Horn', sublabel:'Spinal Cord' },
+      { id:'N3', type:'RELAY',   ...pos(0.64, 0.5), r:30, label:'Thalamus', sublabel:'VPL nucleus' },
+      { id:'N4', type:'CORTICAL',...pos(0.92, 0.5), r:28, label:'Somatosensory\nCortex', sublabel:'S1 area' },
+    ],
+    synapses: [
+      { pre:'N1', post:'N2', nt:'SP' },
+      { pre:'N2', post:'N3', nt:'GLU' },
+      { pre:'N3', post:'N4', nt:'GLU' },
+    ],
+    availableNTs: ['GLU', 'SP', 'GABA', 'ACH'],
+    completionText: 'Substance P amplifies the pain signal at the dorsal horn. Then glutamate relays it to the thalamus (the brain\'s "relay station") and up to conscious perception in the cortex.',
+  },
+
+  // ─────────────────────────────────────────────────────────
+  // LEVEL 3: Inhibitory Control (GABA)
+  // ─────────────────────────────────────────────────────────
+  {
+    title: 'Level 3',
+    name: 'Gate Control — Inhibit Pain',
+    description: 'Inhibitory interneurons can suppress pain signals. This is the Gate Control Theory — non-painful touch can close the "gate" to pain. Complete the INHIBITORY circuit!',
+    fact: 'The Gate Control Theory (Melzack & Wall, 1965) explains why rubbing a bumped knee reduces pain. Aβ touch fibers activate inhibitory interneurons that suppress Aδ/C-fiber pain signals at the spinal cord.',
+    timeLimit: 55,
+    path: ['N1','N2','N3'],
+    neurons: [
+      { id:'N1', type:'SENSORY',    ...pos(0.15, 0.35), r:28, label:'Touch Fiber', sublabel:'Aβ (fast)' },
+      { id:'N2', type:'INHIBITORY', ...pos(0.5,  0.35), r:30, label:'Inhibitory\nInterneuron', sublabel:'Dorsal Horn' },
+      { id:'N3', type:'INTER',      ...pos(0.85, 0.35), r:30, label:'Pain Relay', sublabel:'Projection Neuron' },
+    ],
+    extraNeurons: [
+      { id:'N4', type:'SENSORY', ...pos(0.15, 0.68), r:28, label:'Pain Fiber', sublabel:'C-fiber (blocked!)' },
+    ],
+    extraSynapses: [
+      { pre:'N4', post:'N3', nt:'SP', preAssigned: true },  // already filled — show as blocked
+    ],
+    synapses: [
+      { pre:'N1', post:'N2', nt:'GLU' },
+      { pre:'N2', post:'N3', nt:'GABA', inhibitory: true },
+    ],
+    availableNTs: ['GLU', 'GABA', 'ACH', 'SP'],
+    completionText: 'The touch fiber activates the inhibitory interneuron via glutamate. The interneuron then releases GABA onto the pain relay neuron, hyperpolarizing it and blocking pain transmission — the gate is CLOSED!',
+  },
+
+  // ─────────────────────────────────────────────────────────
+  // LEVEL 4: Neuromuscular Junction
+  // ─────────────────────────────────────────────────────────
+  {
+    title: 'Level 4',
+    name: 'Neuromuscular Junction',
+    description: 'The synapse between a motor neuron and skeletal muscle uses a DIFFERENT neurotransmitter than the CNS. Identify the correct NT for the motor end plate!',
+    fact: 'ACh at the NMJ activates nicotinic receptors, causing Na⁺ influx and muscle depolarization. This triggers Ca²⁺ release from the sarcoplasmic reticulum, activating actin-myosin cross-bridges. Botox blocks ACh release here!',
+    timeLimit: 45,
+    path: ['N1','N2','N3'],
+    neurons: [
+      { id:'N1', type:'CORTICAL', ...pos(0.12, 0.48), r:30, label:'Motor Cortex', sublabel:'Upper Motor N.' },
+      { id:'N2', type:'MOTOR',    ...pos(0.50, 0.48), r:32, label:'α-Motor Neuron', sublabel:'Ventral Horn', myelinated:true },
+      { id:'N3', type:'MUSCLE',   ...pos(0.88, 0.48), r:35, label:'Muscle Fiber', sublabel:'Biceps brachii' },
+    ],
+    synapses: [
+      { pre:'N1', post:'N2', nt:'GLU' },
+      { pre:'N2', post:'N3', nt:'ACH' },   // NMJ uses ACh!
+    ],
+    availableNTs: ['GLU', 'ACH', 'DA', 'GABA'],
+    completionText: 'The motor cortex activates the alpha motor neuron via glutamate. But at the neuromuscular junction, the motor neuron releases ACETYLCHOLINE — not glutamate! ACh triggers muscle contraction.',
+  },
+
+  // ─────────────────────────────────────────────────────────
+  // LEVEL 5: Dopamine Reward Circuit
+  // ─────────────────────────────────────────────────────────
+  {
+    title: 'Level 5',
+    name: 'Dopamine Reward Circuit',
+    description: 'The mesolimbic dopamine pathway links the VTA to the Nucleus Accumbens — the brain\'s reward center. This circuit underlies motivation, pleasure, and addiction.',
+    fact: 'Dopamine isn\'t just "pleasure" — it signals REWARD PREDICTION ERROR. Your brain releases dopamine when something is better than expected. This makes the mesolimbic system key to learning, motivation, and addiction.',
+    timeLimit: 55,
+    path: ['N1','N2','N3','N4'],
+    neurons: [
+      { id:'N1', type:'CORTICAL',  ...pos(0.08, 0.48), r:28, label:'Prefrontal\nCortex', sublabel:'Goal-directed' },
+      { id:'N2', type:'DOPAMINE',  ...pos(0.36, 0.48), r:32, label:'VTA Neuron', sublabel:'Ventral Tegmental Area' },
+      { id:'N3', type:'RELAY',     ...pos(0.64, 0.48), r:30, label:'Nucleus\nAccumbens', sublabel:'Reward Center' },
+      { id:'N4', type:'INTER',     ...pos(0.92, 0.48), r:28, label:'Striatum', sublabel:'Motor output' },
+    ],
+    synapses: [
+      { pre:'N1', post:'N2', nt:'GLU' },
+      { pre:'N2', post:'N3', nt:'DA' },   // Dopamine!
+      { pre:'N3', post:'N4', nt:'GLU' },
+    ],
+    availableNTs: ['GLU', 'DA', 'SERO', 'GABA'],
+    completionText: 'Glutamate from PFC activates VTA dopamine neurons. They release DOPAMINE into the Nucleus Accumbens — triggering reward! The striatum receives the signal to initiate motivated behavior.',
+  },
+
+  // ─────────────────────────────────────────────────────────
+  // LEVEL 6: Fight or Flight (Sympathetic)
+  // ─────────────────────────────────────────────────────────
+  {
+    title: 'Level 6',
+    name: 'Fight or Flight',
+    description: 'The sympathetic nervous system is a TWO-NEURON chain. Preganglionic neurons use ACh, but postganglionic neurons switch to norepinephrine to reach target organs!',
+    fact: 'The sympathetic system is unique: ACh from the preganglionic neuron activates nicotinic receptors in the ganglion. Then the postganglionic neuron switches to NOREPINEPHRINE at the target organ. Adrenal medulla releases epinephrine (adrenaline) directly to blood.',
+    timeLimit: 60,
+    path: ['N1','N2','N3','N4'],
+    neurons: [
+      { id:'N1', type:'CORTICAL',  ...pos(0.08, 0.48), r:28, label:'Hypothalamus', sublabel:'Threat detection' },
+      { id:'N2', type:'INTER',     ...pos(0.36, 0.48), r:30, label:'Preganglionic', sublabel:'T1–L2 spinal cord', myelinated:true },
+      { id:'N3', type:'RELAY',     ...pos(0.64, 0.48), r:30, label:'Sympathetic\nGanglion', sublabel:'Paravertebral chain' },
+      { id:'N4', type:'MOTOR',     ...pos(0.92, 0.48), r:28, label:'Heart / Adrenal', sublabel:'Target organ' },
+    ],
+    synapses: [
+      { pre:'N1', post:'N2', nt:'GLU' },
+      { pre:'N2', post:'N3', nt:'ACH' },   // preganglionic → ACh → nAChR
+      { pre:'N3', post:'N4', nt:'NE' },    // postganglionic → NE → adrenergic receptors
+    ],
+    availableNTs: ['GLU', 'ACH', 'NE', 'DA', 'GABA'],
+    completionText: 'The hypothalamus activates preganglionic neurons via glutamate. The preganglionic neuron releases ACh in the ganglion. The postganglionic neuron then fires NOREPINEPHRINE to accelerate the heart and release adrenaline!',
+  },
+
+  // ─────────────────────────────────────────────────────────
+  // LEVEL 7: Serotonin & Mood
+  // ─────────────────────────────────────────────────────────
+  {
+    title: 'Level 7',
+    name: 'The Mood Circuit',
+    description: 'The raphe nuclei broadcast serotonin throughout the brain — to the hippocampus, amygdala, and prefrontal cortex. This circuit regulates mood, anxiety, and sleep.',
+    fact: 'SSRIs (selective serotonin reuptake inhibitors) like Prozac block serotonin reabsorption, increasing its time in the synapse. But it takes 2-4 WEEKS to work — suggesting antidepressants act via neuroplasticity changes, not just acute NT levels.',
+    timeLimit: 60,
+    path: ['N1','N2','N3','N4'],
+    neurons: [
+      { id:'N1', type:'INTER',    ...pos(0.08, 0.48), r:28, label:'Amygdala', sublabel:'Stress signal' },
+      { id:'N2', type:'RELAY',    ...pos(0.36, 0.48), r:32, label:'Raphe Nuclei', sublabel:'Serotonin factory' },
+      { id:'N3', type:'CORTICAL', ...pos(0.64, 0.48), r:30, label:'Hippocampus', sublabel:'Mood regulation' },
+      { id:'N4', type:'INTER',    ...pos(0.92, 0.48), r:28, label:'Prefrontal\nCortex', sublabel:'Executive control' },
+    ],
+    synapses: [
+      { pre:'N1', post:'N2', nt:'GLU' },
+      { pre:'N2', post:'N3', nt:'SERO' },
+      { pre:'N3', post:'N4', nt:'GLU' },
+    ],
+    availableNTs: ['GLU', 'SERO', 'DA', 'NE', 'GABA'],
+    completionText: 'Stress signals from the amygdala activate the raphe nuclei. The raphe release SEROTONIN into the hippocampus, modulating mood and anxiety. The hippocampus then communicates with the prefrontal cortex for higher-order regulation.',
+  },
+
+  // ─────────────────────────────────────────────────────────
+  // LEVEL 8: Grand Master Circuit
+  // ─────────────────────────────────────────────────────────
+  {
+    title: 'Level 8',
+    name: 'Master Circuit',
+    description: 'The complete sensorimotor loop — from sensory input to conscious perception to voluntary motor output. Five neurotransmitter types. Your ultimate test!',
+    fact: 'Your brain contains ~86 billion neurons with ~100 TRILLION synaptic connections. Synaptic transmission takes only 0.3–0.5ms. You can fire a voluntary motor command in ~200ms — that\'s traversing several synaptic relays at lightning speed!',
+    timeLimit: 90,
+    path: ['N1','N2','N3','N4','N5','N6'],
+    neurons: [
+      { id:'N1', type:'SENSORY',   ...pos(0.05, 0.5),  r:26, label:'Sensory\nNeuron', sublabel:'Peripheral' },
+      { id:'N2', type:'INTER',     ...pos(0.24, 0.5),  r:28, label:'Dorsal Horn', sublabel:'Spinal Cord', myelinated:true },
+      { id:'N3', type:'RELAY',     ...pos(0.43, 0.5),  r:28, label:'Thalamus', sublabel:'Relay' },
+      { id:'N4', type:'CORTICAL',  ...pos(0.62, 0.5),  r:30, label:'Cortex', sublabel:'Processing', myelinated:true },
+      { id:'N5', type:'MOTOR',     ...pos(0.81, 0.5),  r:28, label:'Motor\nNeuron', sublabel:'Corticospinal', myelinated:true },
+      { id:'N6', type:'MUSCLE',    ...pos(0.97, 0.5),  r:30, label:'Muscle', sublabel:'Effector' },
+    ],
+    synapses: [
+      { pre:'N1', post:'N2', nt:'GLU',  myelinated:true },
+      { pre:'N2', post:'N3', nt:'SP' },
+      { pre:'N3', post:'N4', nt:'GLU',  myelinated:true },
+      { pre:'N4', post:'N5', nt:'GLU',  myelinated:true },
+      { pre:'N5', post:'N6', nt:'ACH' },
+    ],
+    availableNTs: ['GLU', 'SP', 'ACH', 'DA', 'GABA', 'NE'],
+    completionText: 'MASTER CIRCUIT COMPLETE! Glutamate relays the signal through the spinal cord. Substance P amplifies it to the thalamus. The cortex processes and commands a motor response via glutamate. Finally, acetylcholine triggers muscle contraction. You understand the brain!',
+  },
+];
+
+// ============================================================
+//  GAME STATE
+// ============================================================
+
+const game = {
+  state: 'MENU',      // MENU | PLAYING | FIRING | LEVEL_COMPLETE | GAME_OVER
+  levelIdx: 0,
+  score: 0,
+  combo: 0,
+  maxCombo: 0,
+  totalTime: 0,       // seconds played
+  levelTime: 0,       // seconds on current level
+  levelTimerMax: 45,
+  neurons: [],
+  synapses: [],
+  apTracer: null,
+  osc: new Oscilloscope(),
+  assignedNTs: {},    // synapseId → ntKey
+  selectedNT: null,
+  gapsFilled: 0,
+  totalGaps: 0,
+  wrongGuesses: 0,
+  levelsCompleted: [],
+  lastTimestamp: 0,
+  overlayMode: null,  // 'menu' | 'complete' | 'gameover'
+  myelinatedSynapses: {},
+};
+
+// ============================================================
+//  LEVEL LOADING
+// ============================================================
+
+function loadLevel(idx) {
+  const lvl = LEVELS[idx];
+  if (!lvl) return;
+
+  game.levelIdx = idx;
+  game.neurons = [];
+  game.synapses = [];
+  game.assignedNTs = {};
+  game.selectedNT = null;
+  game.gapsFilled = 0;
+  game.wrongGuesses = 0;
+  game.myelinatedSynapses = {};
+  game.levelTime = 0;
+  game.levelTimerMax = lvl.timeLimit;
+  game.apTracer = null;
+  game.state = 'PLAYING';
+
+  particles.length = 0;
+
+  // Build neurons
+  const neuronMap = {};
+  for (const cfg of lvl.neurons) {
+    const n = new Neuron(cfg);
+    game.neurons.push(n);
+    neuronMap[cfg.id] = n;
+  }
+
+  // Extra neurons (for display only)
+  if (lvl.extraNeurons) {
+    for (const cfg of lvl.extraNeurons) {
+      const n = new Neuron(cfg);
+      game.neurons.push(n);
+      neuronMap[cfg.id] = n;
+    }
+  }
+
+  // Build synapses
+  for (const s of lvl.synapses) {
+    const syn = new Synapse({
+      pre: neuronMap[s.pre],
+      post: neuronMap[s.post],
+      nt: s.nt,
+      myelinated: s.myelinated || false,
+      inhibitory: s.inhibitory || false,
+    });
+    if (s.myelinated) {
+      game.myelinatedSynapses[`${s.pre}-${s.post}`] = true;
+    }
+    game.synapses.push(syn);
+  }
+
+  // Extra synapses (pre-filled decorative ones)
+  if (lvl.extraSynapses) {
+    for (const s of lvl.extraSynapses) {
+      if (neuronMap[s.pre] && neuronMap[s.post]) {
+        const syn = new Synapse({
+          pre: neuronMap[s.pre],
+          post: neuronMap[s.post],
+          nt: s.nt,
+          inhibitory: s.inhibitory || false,
+        });
+        if (s.preAssigned) syn.ntAssigned = s.nt;
+        game.synapses.push(syn);
+      }
+    }
+  }
+
+  game.totalGaps = game.synapses.filter(s => s.ntRequired && !s.isFilled).length;
+  game.gapsFilled = 0;
+
+  // UI
+  document.getElementById('levelTitle').textContent = lvl.title.toUpperCase();
+  document.getElementById('levelName').textContent = lvl.name;
+  updateLevelProgress();
+  buildNTTokens(lvl.availableNTs);
+  document.getElementById('fireBtn').style.display = 'none';
+  updateInstruction();
+
+  // Show level intro
+  showOverlay('intro', lvl);
+}
+
+function buildNTTokens(keys) {
+  const container = document.getElementById('ntTokens');
+  container.innerHTML = '';
+  for (const key of keys) {
+    const data = NT[key];
+    if (!data) continue;
+    const div = document.createElement('div');
+    div.className = 'nt-token';
+    div.id = `nt-${key}`;
+    div.style.background = rgba(data.color, 0.12);
+    div.style.borderColor = rgba(data.color, 0.35);
+    div.style.color = data.color;
+    div.style.boxShadow = `0 0 12px ${rgba(data.color, 0.2)}`;
+    div.innerHTML = `
+      <span class="nt-abbr">${data.abbr}</span>
+      <span class="nt-name">${data.name}</span>
+    `;
+    div.setAttribute('data-nt', key);
+    div.addEventListener('click', () => selectNT(key));
+    div.addEventListener('mouseenter', () => showNTTooltip(key, div));
+    div.addEventListener('mouseleave', hideTooltip);
+    container.appendChild(div);
+  }
+}
+
+// ============================================================
+//  GAME ACTIONS
+// ============================================================
+
+function selectNT(key) {
+  if (game.state !== 'PLAYING') return;
+  game.selectedNT = (game.selectedNT === key) ? null : key;
+  updateNTSelection();
+  updateInstruction();
+}
+
+function updateNTSelection() {
+  document.querySelectorAll('.nt-token').forEach(el => {
+    el.classList.toggle('selected', el.getAttribute('data-nt') === game.selectedNT);
+  });
+}
+
+function handleCanvasClick(e) {
+  if (game.state !== 'PLAYING') return;
+  const mx = e.clientX, my = e.clientY;
+
+  // Check if clicked a synapse gap
+  for (const syn of game.synapses) {
+    if (syn.isGapHit(mx, my)) {
+      if (game.selectedNT) {
+        attemptFillSynapse(syn, game.selectedNT);
+      } else {
+        // Flash gap to indicate selection needed
+        showFeedback(mx, my, 'Select a neurotransmitter first!', '#F39C12');
+      }
+      return;
+    }
+  }
+
+  // Clicking empty space deselects
+  if (game.selectedNT) {
+    game.selectedNT = null;
+    updateNTSelection();
+    updateInstruction();
+  }
+}
+
+function attemptFillSynapse(syn, ntKey) {
+  const t = performance.now();
+  const correct = syn.assign(ntKey, t);
+
+  if (correct) {
+    game.combo++;
+    game.maxCombo = Math.max(game.maxCombo, game.combo);
+    const timeBonus = Math.floor(Math.max(0, game.levelTimerMax - game.levelTime) * 3);
+    const comboBonus = game.combo > 1 ? game.combo * 20 : 0;
+    const pts = 100 + timeBonus + comboBonus;
+    game.score += pts;
+
+    game.assignedNTs[syn.id] = ntKey;
+    game.gapsFilled++;
+
+    const gp = syn.gapPoint;
+    spawnBurst(gp.x, gp.y, NT[ntKey].color, 20, 0.12);
+    showFeedback(gp.x, gp.y - 20, `+${pts}${game.combo > 1 ? ' ×'+game.combo+'!' : ''}`, NT[ntKey].color);
+
+    updateScoreDisplay();
+    updateComboDisplay();
+
+    if (game.combo > 1) {
+      document.getElementById('comboDisplay').textContent = `COMBO ×${game.combo}!`;
+    }
+
+    // Check if all filled
+    if (game.gapsFilled >= game.totalGaps) {
+      setTimeout(() => {
+        document.getElementById('fireBtn').style.display = 'block';
+        updateInstruction('Circuit complete! Hit FIRE to send the action potential!');
+      }, 300);
+    }
+  } else {
+    game.combo = 0;
+    game.wrongGuesses++;
+    game.score = Math.max(0, game.score - 25);
+    const gp = syn.gapPoint;
+    showFeedback(gp.x, gp.y - 20, 'Wrong NT! −25', '#FF4444');
+    updateScoreDisplay();
+    updateComboDisplay();
+  }
+}
+
+function fireCircuit() {
+  if (game.state !== 'PLAYING') return;
+  game.state = 'FIRING';
+  document.getElementById('fireBtn').style.display = 'none';
+  updateInstruction('Action potential propagating...');
+
+  // Fire the source neuron
+  const lvl = LEVELS[game.levelIdx];
+  const pathIds = lvl.path;
+  const pathNeurons = pathIds.map(id => game.neurons.find(n => n.id === id));
+  const t = performance.now();
+
+  pathNeurons[0].fireNow(t);
+  game.osc.trigger(t);
+
+  spawnBurst(pathNeurons[0].x, pathNeurons[0].y, pathNeurons[0].typeData.color, 20, 0.18);
+
+  game.apTracer = new APTracer(pathNeurons, game.myelinatedSynapses);
+
+  // Schedule level complete after AP finishes
+  const totalSegments = pathNeurons.length - 1;
+  const avgSpeed = 600;
+  const totalDuration = totalSegments * avgSpeed + 800;
+
+  setTimeout(() => {
+    if (game.state === 'FIRING') {
+      levelComplete();
+    }
+  }, totalDuration);
+}
+
+function levelComplete() {
+  game.state = 'LEVEL_COMPLETE';
+  game.levelsCompleted.push(game.levelIdx);
+
+  const lvl = LEVELS[game.levelIdx];
+  const timeBonus = Math.floor(Math.max(0, game.levelTimerMax - game.levelTime) * 5);
+  const accuracyBonus = Math.max(0, (game.totalGaps - game.wrongGuesses) * 50);
+  const comboBonus = game.maxCombo > 2 ? game.maxCombo * 30 : 0;
+
+  game.score += timeBonus + accuracyBonus + comboBonus;
+  updateScoreDisplay();
+
+  // Stars
+  const pct = (game.totalGaps - game.wrongGuesses) / Math.max(1, game.totalGaps);
+  const timeRatio = (game.levelTimerMax - game.levelTime) / game.levelTimerMax;
+  const starScore = pct * 0.7 + timeRatio * 0.3;
+  const stars = starScore > 0.85 ? 3 : starScore > 0.55 ? 2 : 1;
+
+  showOverlay('complete', lvl, stars, game.score);
+}
+
+// ============================================================
+//  OVERLAY SYSTEM
+// ============================================================
+
+let overlayNextAction = null;
+
+function showOverlay(mode, lvl, stars, score) {
+  const overlay = document.getElementById('overlay');
+  const card = document.getElementById('overlayCard');
+  const title = document.getElementById('overlayCard').querySelector('h2') || (() => {
+    const h = document.createElement('h2'); card.prepend(h); return h;
+  })();
+
+  overlay.style.display = 'flex';
+
+  document.getElementById('overlayFact').style.display = 'none';
+  document.getElementById('overlayScore').style.display = 'none';
+  document.getElementById('overlayStars').style.display = 'none';
+
+  if (mode === 'menu') {
+    card.querySelector('h1').style.display = 'block';
+    card.querySelector('.subtitle').style.display = 'block';
+    document.getElementById('overlayBody').innerHTML = `
+      Route action potentials through the brain.<br>
+      Match neurotransmitters to complete synaptic circuits.<br><br>
+      <span style="color:#4FC3F7;">Select a neurotransmitter below,<br>then click a glowing synapse gap to fill it.</span>
+    `;
+    document.getElementById('overlayButtons').innerHTML = `<button class="btn" onclick="startGame()">START GAME</button>`;
+    overlayNextAction = startGame;
+
+  } else if (mode === 'intro') {
+    card.querySelector('h1').style.display = 'none';
+    card.querySelector('.subtitle').style.display = 'none';
+    let h2 = document.getElementById('overlayH2');
+    if (!h2) {
+      h2 = document.createElement('h2');
+      h2.id = 'overlayH2';
+      card.insertBefore(h2, document.getElementById('overlayBody'));
+    }
+    h2.textContent = lvl.name;
+    document.getElementById('overlayBody').innerHTML = lvl.description;
+    document.getElementById('overlayButtons').innerHTML = `<button class="btn" onclick="dismissOverlay()">PLAY</button>`;
+    overlayNextAction = dismissOverlay;
+
+  } else if (mode === 'complete') {
+    card.querySelector('h1').style.display = 'none';
+    card.querySelector('.subtitle').style.display = 'none';
+    let h2 = document.getElementById('overlayH2');
+    if (!h2) {
+      h2 = document.createElement('h2');
+      h2.id = 'overlayH2';
+      card.insertBefore(h2, document.getElementById('overlayBody'));
+    }
+    h2.textContent = `${lvl.name} — Complete!`;
+
+    // Completion text
+    document.getElementById('overlayBody').innerHTML = lvl.completionText;
+
+    // Fact
+    const factEl = document.getElementById('overlayFact');
+    factEl.style.display = 'block';
+    factEl.textContent = lvl.fact;
+
+    // Score
+    const scoreEl = document.getElementById('overlayScore');
+    scoreEl.style.display = 'block';
+    scoreEl.textContent = `Score: ${score}`;
+
+    // Stars
+    const starsEl = document.getElementById('overlayStars');
+    starsEl.style.display = 'block';
+    const starStr = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+    starsEl.innerHTML = `<span style="color:#FFD700;">${starStr}</span>`;
+
+    const isLast = game.levelIdx >= LEVELS.length - 1;
+    document.getElementById('overlayButtons').innerHTML = isLast
+      ? `<button class="btn" onclick="showFinalScreen()">SEE FINAL SCORE</button>`
+      : `<button class="btn" onclick="nextLevel()">NEXT LEVEL →</button>
+         <button class="btn danger" onclick="replayLevel()">REPLAY</button>`;
+  }
+}
+
+function dismissOverlay() {
+  document.getElementById('overlay').style.display = 'none';
+  game.state = 'PLAYING';
+  updateInstruction();
+}
+
+function overlayAction() {
+  if (overlayNextAction) overlayNextAction();
+}
+
+function startGame() {
+  document.getElementById('overlay').style.display = 'none';
+  loadLevel(0);
+}
+
+function nextLevel() {
+  document.getElementById('overlay').style.display = 'none';
+  game.combo = 0;
+  game.maxCombo = 0;
+  loadLevel(game.levelIdx + 1);
+}
+
+function replayLevel() {
+  document.getElementById('overlay').style.display = 'none';
+  game.score = Math.max(0, game.score - 50);
+  loadLevel(game.levelIdx);
+}
+
+function showFinalScreen() {
+  const card = document.getElementById('overlayCard');
+  card.querySelector('h1').style.display = 'block';
+  card.querySelector('.subtitle').style.display = 'none';
+
+  let h2 = document.getElementById('overlayH2');
+  if (!h2) {
+    h2 = document.createElement('h2');
+    h2.id = 'overlayH2';
+    card.insertBefore(h2, document.getElementById('overlayBody'));
+  }
+  h2.textContent = 'YOU MASTERED THE BRAIN!';
+  h2.style.color = '#FFD700';
+
+  document.getElementById('overlayBody').innerHTML = `
+    You've completed all 8 levels and learned how the brain really works.<br><br>
+    From reflex arcs to reward circuits, from pain pathways to mood regulation —
+    you now understand the neurotransmitter language of the brain.
+  `;
+
+  document.getElementById('overlayFact').style.display = 'block';
+  document.getElementById('overlayFact').textContent =
+    'Your brain uses ~20% of your body\'s energy despite being only 2% of your body weight. Every thought, feeling, and movement is the result of electrical signals crossing trillions of synapses — just like the circuits you completed today.';
+
+  document.getElementById('overlayScore').style.display = 'block';
+  document.getElementById('overlayScore').textContent = `Final Score: ${game.score}`;
+
+  document.getElementById('overlayStars').style.display = 'none';
+  document.getElementById('overlayButtons').innerHTML = `
+    <button class="btn" onclick="restartGame()">PLAY AGAIN</button>
+  `;
+}
+
+function restartGame() {
+  game.score = 0;
+  game.combo = 0;
+  game.levelsCompleted = [];
+  document.getElementById('overlay').style.display = 'none';
+  loadLevel(0);
+}
+
+// ============================================================
+//  UI HELPERS
+// ============================================================
+
+function updateScoreDisplay() {
+  document.getElementById('scoreDisplay').textContent = game.score.toLocaleString();
+}
+
+function updateComboDisplay() {
+  const el = document.getElementById('comboDisplay');
+  if (game.combo > 1) {
+    el.textContent = `COMBO ×${game.combo}`;
+    el.style.color = '#FF6B35';
+  } else {
+    el.textContent = '';
+  }
+}
+
+function updateInstruction(msg) {
+  const el = document.getElementById('instructionBox');
+  if (msg) {
+    el.textContent = msg;
+    return;
+  }
+  if (!game.selectedNT) {
+    el.textContent = 'Select a neurotransmitter below, then click a synapse gap (?)';
+  } else {
+    const ntData = NT[game.selectedNT];
+    el.innerHTML = `<span style="color:${ntData.color}">${ntData.name} selected</span> — Click a synapse gap to assign it`;
+  }
+}
+
+function updateLevelProgress() {
+  const el = document.getElementById('levelProgress');
+  el.innerHTML = '';
+  for (let i = 0; i < LEVELS.length; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'prog-dot';
+    if (game.levelsCompleted.includes(i)) dot.classList.add('done');
+    else if (i === game.levelIdx) dot.classList.add('current');
+    el.appendChild(dot);
+  }
+}
+
+function updateTimerBar() {
+  const ratio = clamp(1 - game.levelTime / game.levelTimerMax, 0, 1);
+  document.getElementById('timerFill').style.width = (ratio * 100) + '%';
+
+  const secs = Math.max(0, Math.ceil(game.levelTimerMax - game.levelTime));
+  const min = Math.floor(secs / 60);
+  const sec = secs % 60;
+  document.getElementById('timerDisplay').textContent = `${min}:${sec.toString().padStart(2,'0')}`;
+}
+
+function showFeedback(x, y, text, color) {
+  const el = document.createElement('div');
+  el.className = 'feedback-text';
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  el.style.color = color;
+  el.style.textShadow = `0 0 10px ${color}`;
+  el.textContent = text;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1200);
+}
+
+function showNTTooltip(key, el) {
+  const data = NT[key];
+  const tooltip = document.getElementById('tooltip');
+  tooltip.innerHTML = `
+    <strong style="color:${data.color}">${data.name} (${data.abbr})</strong>
+    <span style="color:${data.effect === 'excitatory' ? '#81C784' : data.effect === 'inhibitory' ? '#EF9A9A' : '#80DEEA'}; font-size:10px; text-transform:uppercase; letter-spacing:1px;">${data.effect}</span><br>
+    Receptor: <span style="color:${data.color}">${data.receptor}</span><br><br>
+    ${data.desc}
+  `;
+  const rect = el.getBoundingClientRect();
+  tooltip.style.left = rect.left + 'px';
+  tooltip.style.top = (rect.top - tooltip.offsetHeight - 10) + 'px';
+  tooltip.style.display = 'block';
+
+  // Reposition if off screen
+  requestAnimationFrame(() => {
+    const tRect = tooltip.getBoundingClientRect();
+    if (tRect.top < 0) {
+      tooltip.style.top = (rect.bottom + 10) + 'px';
+    }
+    if (tRect.left < 0) {
+      tooltip.style.left = '10px';
+    }
+    if (tRect.right > window.innerWidth) {
+      tooltip.style.left = (window.innerWidth - tRect.width - 10) + 'px';
+    }
+  });
+}
+
+function hideTooltip() {
+  document.getElementById('tooltip').style.display = 'none';
+}
+
+// ============================================================
+//  RENDERING
+// ============================================================
+
+function drawBackground(t) {
+  ctx.fillStyle = '#020208';
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle grid
+  ctx.strokeStyle = 'rgba(100,120,200,0.03)';
+  ctx.lineWidth = 1;
+  const gridSize = 40;
+  for (let x = 0; x < W; x += gridSize) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += gridSize) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  // Vignette
+  const vg = ctx.createRadialGradient(CX, CH, 0, CX, CH, Math.max(W, H) * 0.7);
+  vg.addColorStop(0, 'transparent');
+  vg.addColorStop(1, 'rgba(2,2,8,0.6)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function render(t) {
+  drawBackground(t);
+
+  // Draw synapses (under neurons)
+  for (const syn of game.synapses) {
+    syn.draw(ctx, t);
+  }
+
+  // Draw neurons
+  for (const neuron of game.neurons) {
+    neuron.update(t);
+    neuron.draw(ctx, t);
+  }
+
+  // Draw AP tracer
+  if (game.apTracer && !game.apTracer.done) {
+    game.apTracer.draw(ctx, t);
+  }
+
+  // Draw particles
+  for (const p of particles) {
+    p.draw(ctx);
+  }
+
+  // Oscilloscope
+  game.osc.draw(oscCtx);
+}
+
+// ============================================================
+//  MAIN LOOP
+// ============================================================
+
+let lastT = 0;
+
+function gameLoop(t) {
+  const dt = Math.min(t - lastT, 50); // cap dt at 50ms
+  lastT = t;
+
+  if (game.state === 'PLAYING') {
+    game.levelTime += dt / 1000;
+    game.totalTime += dt / 1000;
+    updateTimerBar();
+
+    // Timer expiry
+    if (game.levelTime >= game.levelTimerMax && game.state === 'PLAYING') {
+      game.state = 'LEVEL_COMPLETE';
+      game.levelsCompleted.push(game.levelIdx);
+      setTimeout(() => showOverlay('complete', LEVELS[game.levelIdx], 1, game.score), 200);
+    }
+  }
+
+  if (game.apTracer) {
+    game.apTracer.update(dt, t);
+  }
+
+  // Update oscilloscope
+  game.osc.update(dt * 0.3);
+
+  // Update particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    particles[i].update(dt);
+    if (particles[i].life <= 0) particles.splice(i, 1);
+  }
+
+  render(t);
+
+  requestAnimationFrame(gameLoop);
+}
+
+// ============================================================
+//  INPUT
+// ============================================================
+
+canvas.addEventListener('click', handleCanvasClick);
+
+canvas.addEventListener('mousemove', (e) => {
+  const mx = e.clientX, my = e.clientY;
+  let hovering = false;
+
+  if (game.state === 'PLAYING') {
+    for (const syn of game.synapses) {
+      if (syn.isGapHit(mx, my)) {
+        canvas.style.cursor = 'pointer';
+        hovering = true;
+        // Show synapse tooltip
+        if (!syn.isFilled) {
+          const tooltip = document.getElementById('tooltip');
+          tooltip.innerHTML = game.selectedNT
+            ? `<strong style="color:${NT[game.selectedNT]?.color || '#FFF'}">Assign ${NT[game.selectedNT]?.name || '?'} here?</strong><br>Click to assign.`
+            : `<strong style="color:#F39C12">Synapse Gap</strong><br>Select a neurotransmitter first, then click here.`;
+          tooltip.style.left = (mx + 14) + 'px';
+          tooltip.style.top = (my - 40) + 'px';
+          tooltip.style.display = 'block';
+        }
+        break;
+      }
+    }
+    for (const n of game.neurons) {
+      if (n.isHit(mx, my)) {
+        hovering = true;
+        canvas.style.cursor = 'default';
+        const tooltip = document.getElementById('tooltip');
+        tooltip.innerHTML = `<strong style="color:${n.typeData.color}">${n.label}</strong><br>${n.sublabel}<br><span style="font-size:10px; color:#546E7A;">${n.typeData.label} neuron${n.myelinated ? ' · Myelinated' : ''}</span>`;
+        tooltip.style.left = (mx + 14) + 'px';
+        tooltip.style.top = (my - 40) + 'px';
+        tooltip.style.display = 'block';
+        break;
+      }
+    }
+  }
+
+  if (!hovering) {
+    canvas.style.cursor = game.selectedNT ? 'crosshair' : 'default';
+    hideTooltip();
+  }
+});
+
+canvas.addEventListener('mouseleave', hideTooltip);
+
+// ============================================================
+//  INIT
+// ============================================================
+
+updateScoreDisplay();
+requestAnimationFrame(gameLoop);
+
+</script>
+</body>
+</html>
