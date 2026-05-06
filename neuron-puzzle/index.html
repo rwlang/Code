@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>SYNAPSE — Neural Circuit Game</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -18,7 +18,7 @@ body {
   color: #e0e0f0;
 }
 
-canvas { display: block; }
+canvas { display: block; touch-action: manipulation; }
 
 #topbar {
   position: fixed;
@@ -107,6 +107,7 @@ canvas { display: block; }
   flex-wrap: nowrap;
   overflow-x: auto;
   padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .nt-token {
@@ -827,7 +828,7 @@ class Synapse {
   isGapHit(mx, my) {
     if (this.isFilled) return false;
     const gp = this.gapPoint;
-    return Math.hypot(gp.x - mx, gp.y - my) < 22;
+    return Math.hypot(gp.x - mx, gp.y - my) < 30;
   }
 
   assign(ntKey, t) {
@@ -2097,6 +2098,17 @@ function gameLoop(t) {
 // ============================================================
 
 canvas.addEventListener('click', handleCanvasClick);
+
+// Touch support
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  handleCanvasClick({ clientX: touch.clientX, clientY: touch.clientY });
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+}, { passive: false });
 
 canvas.addEventListener('mousemove', (e) => {
   const mx = e.clientX, my = e.clientY;
