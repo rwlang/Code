@@ -3,653 +3,515 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>NeuroPath — Rotation Puzzle</title>
+<title>NeuroPath — Synapse Builder</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: #0f172a; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; touch-action: manipulation; }
-#game-container canvas { display: block; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0f172a; display:flex; justify-content:center; align-items:center; height:100vh; overflow:hidden; touch-action:none; }
 </style>
 </head>
 <body>
-<div id="game-container"></div>
+<div id="game"></div>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.0/dist/phaser.min.js"></script>
 <script>
-const W = 1024, H = 680, PANEL = 220;
-const BOARD_X = PANEL, BOARD_Y = 0, BOARD_W = W - PANEL, BOARD_H = H;
+const W=1024, H=680, PANEL=220;
+const BOARD_X=PANEL, BOARD_W=W-PANEL, BOARD_H=H;
+const DIRS=[{x:1,y:0},{x:0,y:1},{x:-1,y:0},{x:0,y:-1}];
 
-const DIRS = [{x:1,y:0},{x:0,y:1},{x:-1,y:0},{x:0,y:-1}]; // R D L U
-const OPP  = [2, 3, 0, 1];
-
-const LEVELS = [
-  {name:'Reflex Arc',      cols:4, rows:4, bMin:2, bMax:2, inhibP:0.00, goals:1},
-  {name:'Pain Pathway',    cols:5, rows:4, bMin:2, bMax:3, inhibP:0.10, goals:1},
-  {name:'Dual Circuit',    cols:6, rows:5, bMin:2, bMax:3, inhibP:0.15, goals:2},
-  {name:'Cortex Maze',     cols:7, rows:5, bMin:2, bMax:3, inhibP:0.20, goals:2},
-  {name:'Full Connectome', cols:8, rows:6, bMin:2, bMax:3, inhibP:0.25, goals:3},
+const LEVELS=[
+  {name:'Reflex Arc',      cols:4,rows:4,inhibP:0.06,goals:1,t2P:0.00},
+  {name:'Pain Pathway',    cols:5,rows:4,inhibP:0.12,goals:1,t2P:0.20},
+  {name:'Dual Circuit',    cols:6,rows:5,inhibP:0.14,goals:2,t2P:0.25},
+  {name:'Cortex Maze',     cols:7,rows:5,inhibP:0.16,goals:2,t2P:0.30},
+  {name:'Full Connectome', cols:8,rows:6,inhibP:0.18,goals:3,t2P:0.35},
 ];
 
-const COL = {
-  start: {body:0x1d4ed8, glow:0x3b82f6, nuc:0x1e3a8a, stub:0x93c5fd, label:0xdbeafe, active:0x38bdf8},
-  goal:  {body:0x92400e, glow:0xd97706, nuc:0x78350f, stub:0xfcd34d, label:0xfef3c7, active:0x4ade80},
-  relay: {body:0x065f46, glow:0x059669, nuc:0x064e3b, stub:0x6ee7b7, label:0xd1fae5, active:0xfbbf24},
-  inhib: {body:0x7f1d1d, glow:0xdc2626, nuc:0x450a0a, stub:0xfca5a5, label:0xffe4e6, active:0xf87171},
+const COL={
+  start:{body:0x1d4ed8,ring:0x3b82f6,nuc:0x1e3a8a,text:'#bfdbfe',fired:0x38bdf8,supp:0x0f172a},
+  goal: {body:0x92400e,ring:0xd97706,nuc:0x78350f,text:'#fef3c7',fired:0x4ade80,supp:0x450a0a},
+  relay:{body:0x065f46,ring:0x059669,nuc:0x064e3b,text:'#d1fae5',fired:0xfbbf24,supp:0x1e293b},
+  inhib:{body:0x7f1d1d,ring:0xdc2626,nuc:0x450a0a,text:'#fecaca',fired:0xf87171,supp:0x1c0a0a},
 };
 
-class NeuroScene extends Phaser.Scene {
-  constructor() { super('NeuroScene'); }
+class Scene extends Phaser.Scene {
+  constructor(){super('S');}
 
-  create() {
-    this.lvlIdx    = 0;
-    this.moves     = 0;
-    this.solved    = false;
-    this.animating = false;
-    this.nodes     = [];
-    this.edges     = [];
-    this.edgeGfx   = null;
-    this.nodeCtrs  = {};
-    this.solRots   = {};
-    this.startId   = null;
-    this.goalIds   = [];
-    this.hintRings = [];
+  create(){
+    this.lvl=0; this.solved=false; this.animating=false;
+    this.nodes=[]; this.byId={}; this.conns=[];
+    this.nodeCtrs={}; this.connGfx=null; this.rubberGfx=null;
+    this.dragging=null; this.startId=null; this.goalIds=[];
 
     this.createPanel();
+
+    // Global pointer handlers registered once
+    this.input.on('pointermove', p=>this.onMove(p));
+    this.input.on('pointerup',   p=>this.onUp(p));
+
     this.buildLevel(0);
   }
 
-  // ── PANEL ──────────────────────────────────────────────────────────────────
-  createPanel() {
-    this.add.rectangle(0, 0, PANEL, H, 0x0b1120).setOrigin(0, 0);
-    this.add.rectangle(PANEL - 1, 0, 2, H, 0x1e3a5f).setOrigin(0, 0);
+  // ── PANEL ─────────────────────────────────────────────────────────────────
+  createPanel(){
+    this.add.rectangle(0,0,PANEL,H,0x0b1120).setOrigin(0,0);
+    this.add.rectangle(PANEL-1,0,2,H,0x1e3a5f).setOrigin(0,0);
+    this.add.text(PANEL/2,22,'NeuroPath',{fontSize:'22px',fontFamily:'Arial',color:'#38bdf8',fontStyle:'bold'}).setOrigin(0.5);
+    this.add.text(PANEL/2,46,'Synapse Builder',{fontSize:'12px',fontFamily:'Arial',color:'#475569'}).setOrigin(0.5);
 
-    this.add.text(PANEL / 2, 22, 'NeuroPath', {
-      fontSize: '22px', fontFamily: 'Arial', color: '#38bdf8', fontStyle: 'bold'
-    }).setOrigin(0.5);
-    this.add.text(PANEL / 2, 46, 'Rotation Puzzle', {
-      fontSize: '12px', fontFamily: 'Arial', color: '#475569'
-    }).setOrigin(0.5);
+    this.txtLvl  =this.add.text(PANEL/2,70,'',{fontSize:'12px',fontFamily:'Arial',color:'#94a3b8',align:'center',wordWrap:{width:PANEL-20}}).setOrigin(0.5);
+    this.txtConns=this.add.text(PANEL/2,88,'',{fontSize:'11px',fontFamily:'Arial',color:'#64748b'}).setOrigin(0.5);
 
-    this.txtLevel = this.add.text(PANEL / 2, 76, '', {
-      fontSize: '12px', fontFamily: 'Arial', color: '#94a3b8', align: 'center', wordWrap: {width: PANEL - 20}
-    }).setOrigin(0.5);
-
-    this.txtMoves = this.add.text(PANEL / 2, 96, '', {
-      fontSize: '11px', fontFamily: 'Arial', color: '#64748b'
-    }).setOrigin(0.5);
-
-    // Level selector buttons
-    this.lvlBtns = [];
-    for (let i = 0; i < LEVELS.length; i++) {
-      const y = 122 + i * 32;
-      const btn = this.add.rectangle(PANEL / 2, y, PANEL - 24, 26, 0x1e293b).setOrigin(0.5).setInteractive({cursor: 'pointer'});
-      const lbl = this.add.text(PANEL / 2, y, `${i + 1}. ${LEVELS[i].name}`, {
-        fontSize: '10px', fontFamily: 'Arial', color: '#94a3b8'
-      }).setOrigin(0.5);
-      btn.on('pointerdown', () => { if (!this.animating) this.buildLevel(i); });
-      btn.on('pointerover', () => btn.setFillStyle(0x334155));
-      btn.on('pointerout',  () => btn.setFillStyle(i === this.lvlIdx ? 0x1e3a5f : 0x1e293b));
-      this.lvlBtns.push({btn, lbl});
+    // Level buttons
+    this.lvlBtns=[];
+    for(let i=0;i<LEVELS.length;i++){
+      const y=110+i*28;
+      const btn=this.add.rectangle(PANEL/2,y,PANEL-24,23,0x1e293b).setOrigin(0.5).setInteractive({cursor:'pointer'});
+      const lbl=this.add.text(PANEL/2,y,`${i+1}. ${LEVELS[i].name}`,{fontSize:'10px',fontFamily:'Arial',color:'#94a3b8'}).setOrigin(0.5);
+      btn.on('pointerdown',()=>{if(!this.animating)this.buildLevel(i);});
+      btn.on('pointerover',()=>btn.setFillStyle(0x334155));
+      btn.on('pointerout', ()=>btn.setFillStyle(i===this.lvl?0x1e3a5f:0x1e293b));
+      this.lvlBtns.push({btn,lbl});
     }
 
     // Legend
-    const ly0 = 290;
-    this.add.text(PANEL / 2, ly0, 'Legend', {fontSize: '10px', fontFamily: 'Arial', color: '#475569', fontStyle: 'bold'}).setOrigin(0.5);
-    [{c: 0x3b82f6, t: 'Source (start)'}, {c: 0xd97706, t: 'Target (goal)'}, {c: 0x059669, t: 'Relay neuron'}, {c: 0xdc2626, t: 'Inhibitory (GABA)'}]
-      .forEach(({c, t}, i) => {
-        const y = ly0 + 16 + i * 19;
-        this.add.circle(14, y, 5, c);
-        this.add.text(26, y, t, {fontSize: '10px', fontFamily: 'Arial', color: '#64748b'}).setOrigin(0, 0.5);
+    const ly=260;
+    this.add.text(PANEL/2,ly,'Legend',{fontSize:'10px',fontFamily:'Arial',color:'#475569',fontStyle:'bold'}).setOrigin(0.5);
+    [{c:0x3b82f6,t:'Source (SRC)'},{c:0xd97706,t:'Target (TGT)'},{c:0x059669,t:'Relay neuron'},{c:0xdc2626,t:'Inhibitory (GABA)'}]
+      .forEach(({c,t},i)=>{
+        const y=ly+15+i*18;
+        this.add.circle(14,y,5,c);
+        this.add.text(26,y,t,{fontSize:'10px',fontFamily:'Arial',color:'#64748b'}).setOrigin(0,0.5);
       });
 
-    // How to play
-    const iy = 378;
-    this.add.text(PANEL / 2, iy, 'How to play', {fontSize: '10px', fontFamily: 'Arial', color: '#475569', fontStyle: 'bold'}).setOrigin(0.5);
-    this.add.text(8, iy + 14, 'Click a neuron to rotate it.\nAlign stubs so they touch.\nRoute signal: blue → gold.', {
-      fontSize: '10px', fontFamily: 'Arial', color: '#64748b', lineSpacing: 3
-    });
+    // Instructions
+    const iy=348;
+    this.add.text(PANEL/2,iy,'How to play',{fontSize:'10px',fontFamily:'Arial',color:'#475569',fontStyle:'bold'}).setOrigin(0.5);
+    this.add.text(8,iy+13,[
+      'Drag between neurons to',
+      'draw a synapse (arrow).',
+      'Drag again to remove it.',
+      '',
+      'Route signal: blue → gold.',
+      'GABA blocks downstream.',
+      '×2 needs 2 fired inputs.',
+    ].join('\n'),{fontSize:'10px',fontFamily:'Arial',color:'#64748b',lineSpacing:2});
 
-    // Buttons
-    this.makeBtn(PANEL / 2, H - 130, 'New Puzzle', 0x1e3a5f, () => { if (!this.animating) this.newPuzzle(); });
-    this.makeBtn(PANEL / 2, H - 96,  'Show Hint',  0x1e3a5f, () => { if (!this.animating) this.showHint(); });
-    this.btnNext = this.makeBtn(PANEL / 2, H - 62, 'Next Level →', 0x065f46, () => { if (!this.animating) this.nextLevel(); });
+    this.makePBtn(PANEL/2,H-104,'Clear Synapses',0x7f1d1d,()=>{if(!this.animating)this.clearConns();});
+    this.makePBtn(PANEL/2,H-74, 'New Puzzle',    0x1e3a5f,()=>{if(!this.animating)this.newPuzzle();});
+    this.btnNext=this.makePBtn(PANEL/2,H-44,'Next Level →', 0x065f46,()=>{if(!this.animating)this.nextLevel();});
     this.btnNext.setVisible(false);
   }
 
-  makeBtn(x, y, label, color, fn) {
-    const btn = this.add.rectangle(x, y, PANEL - 24, 26, color).setOrigin(0.5).setInteractive({cursor: 'pointer'});
-    this.add.text(x, y, label, {fontSize: '12px', fontFamily: 'Arial', color: '#e2e8f0'}).setOrigin(0.5);
-    btn.on('pointerdown', fn);
-    btn.on('pointerover', () => btn.setFillStyle(color + 0x111111 > 0xffffff ? color : color + 0x0a0a0a));
-    btn.on('pointerout',  () => btn.setFillStyle(color));
+  makePBtn(x,y,label,color,fn){
+    const btn=this.add.rectangle(x,y,PANEL-24,24,color).setOrigin(0.5).setInteractive({cursor:'pointer'});
+    this.add.text(x,y,label,{fontSize:'11px',fontFamily:'Arial',color:'#e2e8f0'}).setOrigin(0.5);
+    btn.on('pointerdown',fn);
     return btn;
   }
 
-  updatePanel() {
-    const lv = LEVELS[this.lvlIdx];
-    this.txtLevel.setText(`Level ${this.lvlIdx + 1}: ${lv.name}`);
-    this.txtMoves.setText(`Moves: ${this.moves}`);
-    this.lvlBtns.forEach(({btn, lbl}, i) => {
-      btn.setFillStyle(i === this.lvlIdx ? 0x1e3a5f : 0x1e293b);
-      lbl.setColor(i === this.lvlIdx ? '#38bdf8' : '#94a3b8');
+  updatePanel(){
+    this.txtLvl.setText(`Level ${this.lvl+1}: ${LEVELS[this.lvl].name}`);
+    this.txtConns.setText(`Synapses drawn: ${this.conns.length}`);
+    this.lvlBtns.forEach(({btn,lbl},i)=>{
+      btn.setFillStyle(i===this.lvl?0x1e3a5f:0x1e293b);
+      lbl.setColor(i===this.lvl?'#38bdf8':'#94a3b8');
     });
   }
 
-  // ── LEVEL ──────────────────────────────────────────────────────────────────
-  buildLevel(idx) {
-    this.lvlIdx    = idx;
-    this.moves     = 0;
-    this.solved    = false;
-    this.animating = false;
+  // ── LEVEL ─────────────────────────────────────────────────────────────────
+  buildLevel(idx){
+    this.lvl=idx; this.solved=false; this.animating=false;
     this.btnNext.setVisible(false);
     this.clearBoard();
     this.newPuzzle();
-    this.updatePanel();
   }
 
-  clearBoard() {
-    if (this.edgeGfx) { this.edgeGfx.destroy(); this.edgeGfx = null; }
-    Object.values(this.nodeCtrs).forEach(c => c.destroy());
-    this.nodeCtrs = {};
-    this.nodes    = [];
-    this.edges    = [];
-    this.solRots  = {};
-    this.hintRings.forEach(r => r.destroy());
-    this.hintRings = [];
+  clearBoard(){
+    if(this.connGfx){this.connGfx.destroy();this.connGfx=null;}
+    if(this.rubberGfx){this.rubberGfx.destroy();this.rubberGfx=null;}
+    Object.values(this.nodeCtrs).forEach(c=>c.destroy());
+    this.nodeCtrs={}; this.nodes=[]; this.byId={}; this.conns=[];
+    this.dragging=null;
   }
 
-  newPuzzle() {
-    this.clearBoard();
-    this.solved    = false;
-    this.moves     = 0;
+  clearConns(){
+    this.conns=[];
+    this.solved=false;
     this.btnNext.setVisible(false);
-    this.updatePanel();
-
-    let ok = false;
-    for (let attempt = 0; attempt < 300 && !ok; attempt++) {
-      ok = this.tryGenerate();
-    }
-    if (!ok) {
-      if (this.lvlIdx > 0) { this.buildLevel(this.lvlIdx - 1); return; }
-      console.error('Generation failed at level 0');
-      return;
-    }
-
-    this.edgeGfx = this.add.graphics().setDepth(1);
-    this.layoutNodes();
-    this.redrawEdges();
+    this.refreshSignal();
     this.updatePanel();
   }
 
-  // ── PUZZLE GENERATION ──────────────────────────────────────────────────────
-  tryGenerate() {
-    const lv   = LEVELS[this.lvlIdx];
-    const {cols, rows} = lv;
+  newPuzzle(){
+    this.clearBoard();
+    this.solved=false; this.btnNext.setVisible(false);
+    let ok=false;
+    for(let i=0;i<300&&!ok;i++) ok=this.tryGenerate();
+    if(!ok){ if(this.lvl>0)this.buildLevel(this.lvl-1); return; }
 
-    const cid = (c, r) => `${c}_${r}`;
-    const inBounds = (c, r) => c >= 0 && c < cols && r >= 0 && r < rows;
+    this.connGfx  =this.add.graphics().setDepth(1);
+    this.rubberGfx=this.add.graphics().setDepth(5);
+    this.layoutNodes();
+    this.refreshSignal();
+    this.updatePanel();
+  }
 
-    // Create nodes
-    const nodes = [];
-    const byId  = {};
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const n = {id: cid(c, r), col: c, row: r, type: 'relay', branches: [], rot: 0, solRot: 0};
-        nodes.push(n);
-        byId[n.id] = n;
-      }
+  // ── GENERATION ────────────────────────────────────────────────────────────
+  tryGenerate(){
+    const lv=LEVELS[this.lvl];
+    const{cols,rows}=lv;
+    const cid=(c,r)=>`${c}_${r}`;
+    const inB=(c,r)=>c>=0&&c<cols&&r>=0&&r<rows;
+
+    // Build grid
+    const nodes=[], byId={};
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      const n={id:cid(c,r),col:c,row:r,type:'relay',threshold:1};
+      nodes.push(n); byId[n.id]=n;
     }
 
-    // Pick start: leftmost column, middle row
-    const startC = 0, startR = Math.floor(rows / 2);
-    byId[cid(startC, startR)].type = 'start';
-    this.startId = cid(startC, startR);
+    // Start: left col, middle row
+    const sC=0, sR=Math.floor(rows/2);
+    byId[cid(sC,sR)].type='start';
+    this.startId=cid(sC,sR);
 
-    // BFS ignoring node types
-    const gridBFS = (sc, sr, blocked) => {
-      const dist   = {};
-      const parent = {};
-      const q      = [[sc, sr]];
-      dist[cid(sc, sr)] = 0;
-      while (q.length) {
-        const [c, r] = q.shift();
-        for (const d of DIRS) {
-          const nc = c + d.x, nr = r + d.y;
-          const key = cid(nc, nr);
-          if (!inBounds(nc, nr) || dist[key] !== undefined || (blocked && blocked.has(key))) continue;
-          dist[key] = dist[cid(c, r)] + 1;
-          parent[key] = cid(c, r);
-          q.push([nc, nr]);
+    // BFS
+    const bfs=(sc,sr,blocked)=>{
+      const dist={[cid(sc,sr)]:0}, parent={}, q=[[sc,sr]];
+      while(q.length){
+        const[c,r]=q.shift();
+        for(const d of DIRS){
+          const nc=c+d.x,nr=r+d.y,k=cid(nc,nr);
+          if(!inB(nc,nr)||dist[k]!==undefined||(blocked&&blocked.has(k)))continue;
+          dist[k]=dist[cid(c,r)]+1; parent[k]=cid(c,r); q.push([nc,nr]);
         }
       }
-      return {dist, parent};
+      return{dist,parent};
     };
 
-    // Find far nodes for goals
-    const {dist: allDist} = gridBFS(startC, startR, null);
-    const candidates = nodes
-      .filter(n => n.id !== this.startId && allDist[n.id] !== undefined)
-      .sort((a, b) => allDist[b.id] - allDist[a.id]);
+    // Pick far goals
+    const{dist:allDist}=bfs(sC,sR,null);
+    const minD=Math.ceil(Math.max(cols,rows)*0.5);
+    const cands=nodes
+      .filter(n=>n.id!==this.startId&&allDist[n.id]>=minD)
+      .sort((a,b)=>allDist[b.id]-allDist[a.id]);
+    if(cands.length<lv.goals) return false;
 
-    if (candidates.length < lv.goals) return false;
-
-    // Pick spread-out goals
-    const goalCells = [];
-    for (const c of candidates) {
-      if (goalCells.length >= lv.goals) break;
-      const close = goalCells.some(g => Math.abs(g.col - c.col) + Math.abs(g.row - c.row) < 2);
-      if (!close && allDist[c.id] >= Math.ceil(Math.max(cols, rows) * 0.6)) {
-        goalCells.push(c);
-      }
+    const goalCells=[];
+    for(const c of cands){
+      if(goalCells.length>=lv.goals) break;
+      if(!goalCells.some(g=>Math.abs(g.col-c.col)+Math.abs(g.row-c.row)<2)) goalCells.push(c);
     }
-    // Fallback: just pick furthest
-    if (goalCells.length < lv.goals) {
-      for (const c of candidates) {
-        if (goalCells.length >= lv.goals) break;
-        if (!goalCells.includes(c)) goalCells.push(c);
-      }
+    if(goalCells.length<lv.goals){
+      for(const c of cands){ if(goalCells.length>=lv.goals)break; if(!goalCells.includes(c))goalCells.push(c); }
     }
-    if (goalCells.length < lv.goals) return false;
+    if(goalCells.length<lv.goals) return false;
 
-    this.goalIds = goalCells.map(g => g.id);
-    goalCells.forEach(g => { byId[g.id].type = 'goal'; });
+    this.goalIds=goalCells.map(g=>g.id);
+    goalCells.forEach(g=>{byId[g.id].type='goal';});
 
-    // Mark inhibitory nodes (not start/goal, not on grid boundary preferably)
-    const relays = nodes.filter(n => n.type === 'relay');
+    // Mark GABA (not on start/goals)
+    const relays=nodes.filter(n=>n.type==='relay');
     Phaser.Utils.Array.Shuffle(relays);
-    const inhibN = Math.floor(lv.inhibP * relays.length);
-    relays.slice(0, inhibN).forEach(n => { n.type = 'inhib'; });
+    relays.slice(0,Math.floor(lv.inhibP*relays.length)).forEach(n=>{n.type='inhib';});
+    const inhibSet=new Set(nodes.filter(n=>n.type==='inhib').map(n=>n.id));
 
-    const inhibSet = new Set(nodes.filter(n => n.type === 'inhib').map(n => n.id));
-
-    // Build solution paths (BFS from start to each goal, avoiding inhib)
-    const pathNodeIds = new Set([this.startId]);
-    const reqDirs     = {}; // nodeId -> Set<effective_dir_idx>
-    nodes.forEach(n => { reqDirs[n.id] = new Set(); });
-
-    for (const goalId of this.goalIds) {
-      const [gc, gr] = goalId.split('_').map(Number);
-      const {parent} = gridBFS(startC, startR, inhibSet);
-      if (!parent[goalId]) return false; // no path to this goal
-
-      // Reconstruct path
-      let cur  = goalId;
-      const path = [cur];
-      while (parent[cur]) { cur = parent[cur]; path.unshift(cur); }
-      if (path[0] !== this.startId) return false;
-
-      for (let i = 0; i < path.length - 1; i++) {
-        const a = byId[path[i]], b = byId[path[i + 1]];
-        const di = DIRS.findIndex(d => d.x === b.col - a.col && d.y === b.row - a.row);
-        pathNodeIds.add(a.id);
-        pathNodeIds.add(b.id);
-        reqDirs[a.id].add(di);
-        reqDirs[b.id].add(OPP[di]);
-      }
+    // Verify paths exist to all goals through non-inhib nodes
+    const pathIds=new Set([this.startId]);
+    for(const gId of this.goalIds){
+      const{parent}=bfs(sC,sR,inhibSet);
+      if(!parent[gId]) return false;
+      let cur=gId;
+      while(parent[cur]){pathIds.add(cur);cur=parent[cur];}
+      pathIds.add(this.startId);
     }
 
-    // Assign branches & solution rotations
-    for (const n of nodes) {
-      if (n.type === 'inhib') { n.branches = []; n.solRot = 0; continue; }
+    // Assign threshold-2 to some relay nodes on solution paths
+    // that have ≥2 adjacent non-inhib, non-start neighbors reachable from start
+    const pathRelays=[...pathIds]
+      .filter(id=>byId[id].type==='relay')
+      .sort(()=>Math.random()-0.5);
+    const nT2=Math.floor(lv.t2P*pathRelays.length);
 
-      const req    = [...reqDirs[n.id]];
-      const nExtra = Math.max(0, Phaser.Math.Between(lv.bMin, lv.bMax) - req.length);
-      const solRot = Phaser.Math.Between(0, 3);
-      n.solRot = solRot;
-
-      // Effective dirs = req + random extras
-      const extra = [0, 1, 2, 3].filter(d => !req.includes(d));
-      Phaser.Utils.Array.Shuffle(extra);
-      const effDirs = [...req, ...extra.slice(0, nExtra)];
-
-      // branches[i] such that (branch + solRot) % 4 = effDir
-      n.branches = effDirs.map(d => ((d - solRot) + 4) % 4);
+    for(const id of pathRelays.slice(0,nT2)){
+      const n=byId[id];
+      const okAdj=DIRS.filter(d=>{
+        const nc=n.col+d.x,nr=n.row+d.y,nid=cid(nc,nr);
+        return inB(nc,nr)&&byId[nid]&&byId[nid].type!=='inhib';
+      });
+      if(okAdj.length>=2) n.threshold=2;
     }
 
-    // Scramble rotations; ensure path nodes are wrong
-    for (const n of nodes) {
-      if (n.type === 'inhib') { n.rot = 0; continue; }
-      let r = Phaser.Math.Between(0, 3);
-      if (pathNodeIds.has(n.id) && n.branches.length > 0) {
-        let tries = 0;
-        while (r === n.solRot && tries++ < 10) r = Phaser.Math.Between(0, 3);
-      }
-      n.rot = r;
-    }
-
-    // Verify not accidentally solved
-    const adj0 = this.computeAdj(nodes, byId);
-    if (this.checkGoals(adj0, this.startId, this.goalIds, byId)) {
-      // Force one path node wrong
-      for (const id of pathNodeIds) {
-        const n = byId[id];
-        if (!n || n.branches.length === 0) continue;
-        n.rot = (n.solRot + 1 + Phaser.Math.Between(0, 2)) % 4;
-        const adj1 = this.computeAdj(nodes, byId);
-        if (!this.checkGoals(adj1, this.startId, this.goalIds, byId)) break;
-      }
-    }
-
-    this.nodes = nodes;
+    this.nodes=nodes; this.byId=byId;
     return true;
   }
 
-  // ── GRAPH HELPERS ──────────────────────────────────────────────────────────
-  computeAdj(nodes, byId) {
-    const map = new Map();
-    nodes.forEach(n => map.set(n.id, new Set()));
-    const bd  = byId || {};
-    nodes.forEach(n => { bd[n.id] = n; });
+  // ── LAYOUT ────────────────────────────────────────────────────────────────
+  layoutNodes(){
+    const lv=LEVELS[this.lvl];
+    const mg=40;
+    const cw=Math.floor((BOARD_W-mg*2)/lv.cols);
+    const ch=Math.floor((BOARD_H-mg*2)/lv.rows);
+    const cell=Math.min(cw,ch,90);
+    const r=Math.max(18,Math.floor(cell*0.32));
+    const ox=BOARD_X+(BOARD_W-cell*lv.cols)/2+cell/2;
+    const oy=(BOARD_H-cell*lv.rows)/2+cell/2;
+    this.cell=cell; this.radius=r;
 
-    for (const a of nodes) {
-      const effA = this.effDirs(a);
-      for (let di = 0; di < 4; di++) {
-        if (!effA.includes(di)) continue;
-        const nc = a.col + DIRS[di].x, nr = a.row + DIRS[di].y;
-        const bId = `${nc}_${nr}`;
-        const b   = bd[bId];
-        if (!b) continue;
-        if (this.effDirs(b).includes(OPP[di])) {
-          map.get(a.id).add(b.id);
-          map.get(b.id).add(a.id);
-        }
-      }
+    // Grid dots
+    const dotGfx=this.add.graphics().setDepth(0);
+    for(let row=0;row<lv.rows;row++) for(let col=0;col<lv.cols;col++){
+      const x=ox+col*cell, y=oy+row*cell;
+      dotGfx.fillStyle(0x1e3a5f,0.4);
+      dotGfx.fillCircle(x,y,2);
     }
-    return map;
-  }
 
-  checkGoals(adj, startId, goalIds, byId) {
-    const visited = new Set([startId]);
-    const queue   = [startId];
-    while (queue.length) {
-      const cur = queue.shift();
-      for (const nb of (adj.get(cur) || [])) {
-        if (visited.has(nb)) continue;
-        if (byId[nb] && byId[nb].type === 'inhib') continue;
-        visited.add(nb);
-        queue.push(nb);
-      }
-    }
-    return goalIds.every(g => visited.has(g));
-  }
-
-  effDirs(n) {
-    return n.branches.map(b => (b + n.rot) % 4);
-  }
-
-  getByIdMap() {
-    const m = {};
-    this.nodes.forEach(n => { m[n.id] = n; });
-    return m;
-  }
-
-  // ── LAYOUT & DRAWING ───────────────────────────────────────────────────────
-  layoutNodes() {
-    const lv     = LEVELS[this.lvlIdx];
-    const margin = 36;
-    const cw     = Math.floor((BOARD_W - margin * 2) / lv.cols);
-    const ch     = Math.floor((BOARD_H - margin * 2) / lv.rows);
-    const cell   = Math.min(cw, ch, 88);
-    const radius = Math.max(18, Math.floor(cell * 0.33));
-    const ox     = BOARD_X + (BOARD_W - cell * lv.cols) / 2 + cell / 2;
-    const oy     = BOARD_Y + (BOARD_H - cell * lv.rows) / 2 + cell / 2;
-
-    this.cell   = cell;
-    this.radius = radius;
-
-    for (const n of this.nodes) {
-      n.x = ox + n.col * cell;
-      n.y = oy + n.row * cell;
+    this.nodes.forEach(n=>{
+      n.x=ox+n.col*cell;
+      n.y=oy+n.row*cell;
       this.drawNode(n);
-    }
+    });
   }
 
-  drawNode(n) {
-    const r = this.radius;
-    const c = COL[n.type];
+  drawNode(n){
+    const r=this.radius, c=COL[n.type];
+    const ctr=this.add.container(n.x,n.y).setDepth(2);
 
-    const ctr  = this.add.container(n.x, n.y).setDepth(2);
-    const glow = this.add.circle(0, 0, r * 1.5, c.glow, 0.22);
-    const body = this.add.circle(0, 0, r, c.body, 1);
-    body.setStrokeStyle(2, c.glow, 0.9);
-    const nuc  = this.add.circle(0, 0, r * 0.42, c.nuc, 1);
-    const hl   = this.add.circle(-r * 0.22, -r * 0.26, r * 0.2, 0xffffff, 0.16);
+    const glow=this.add.circle(0,0,r*1.52,c.ring,0.18);
+    const body=this.add.circle(0,0,r,c.body,1);
+    body.setStrokeStyle(2,c.ring,0.9);
+    const nuc=this.add.circle(0,0,r*0.38,c.nuc,1);
+    const hl=this.add.circle(-r*0.2,-r*0.24,r*0.18,0xffffff,0.14);
+    ctr.add([glow,body,nuc,hl]);
 
-    ctr.add([glow, body, nuc, hl]);
-    this.drawStubs(n, ctr, r, c);
-
-    // Label for special types
-    const lblMap = {start: 'SRC', goal: 'TGT', inhib: 'GABA'};
-    if (lblMap[n.type]) {
-      const fs = Math.max(7, Math.floor(r * 0.42));
-      ctr.add(this.add.text(0, 0, lblMap[n.type], {
-        fontSize: fs + 'px', fontFamily: 'Arial', fontStyle: 'bold',
-        color: '#' + c.label.toString(16).padStart(6, '0')
+    // Type label
+    const lblMap={start:'SRC',goal:'TGT',inhib:'GABA'};
+    if(lblMap[n.type]){
+      ctr.add(this.add.text(0,0,lblMap[n.type],{
+        fontSize:Math.max(7,Math.floor(r*0.38))+'px',fontFamily:'Arial',fontStyle:'bold',color:c.text
       }).setOrigin(0.5));
     }
 
-    ctr._body = body;
-    ctr._glow = glow;
-    ctr._nuc  = nuc;
-    ctr._node = n;
-    ctr.setSize(r * 2.6, r * 2.6);
-    ctr.setInteractive({cursor: 'pointer'});
-    ctr.on('pointerdown', () => { if (!this.solved && !this.animating) this.rotateNode(n); });
-    ctr.on('pointerover', () => { if (!this.solved) body.setStrokeStyle(3, 0xffffff, 0.8); });
-    ctr.on('pointerout',  () => { body.setStrokeStyle(2, c.glow, 0.9); });
+    // Threshold badge (×2)
+    if(n.threshold>1){
+      const bx=r*0.6, by=-r*0.65;
+      ctr.add(this.add.circle(bx,by,r*0.32,0x0f172a,1).setStrokeStyle(1.5,0xfde68a,1));
+      ctr.add(this.add.text(bx,by,'×2',{
+        fontSize:Math.max(6,Math.floor(r*0.3))+'px',fontFamily:'Arial',fontStyle:'bold',color:'#fde68a'
+      }).setOrigin(0.5));
+    }
 
-    ctr.rotation = n.rot * Math.PI / 2;
-    this.nodeCtrs[n.id] = ctr;
+    ctr._body=body; ctr._glow=glow; ctr._nuc=nuc; ctr._node=n;
+    ctr.setSize(r*2.6,r*2.6);
+    ctr.setInteractive({cursor:'pointer'});
+    ctr.on('pointerdown', ptr=>{if(!this.solved&&!this.animating)this.onDown(n,ptr);});
+    ctr.on('pointerover', ()=>{if(!this.solved)body.setStrokeStyle(3,0xffffff,0.8);});
+    ctr.on('pointerout',  ()=>body.setStrokeStyle(2,c.ring,0.9));
+    this.nodeCtrs[n.id]=ctr;
   }
 
-  drawStubs(n, ctr, r, c) {
-    const angles = [0, Math.PI / 2, Math.PI, -Math.PI / 2]; // R D L U
-    for (const b of n.branches) {
-      const ang = angles[b];
-      const cos = Math.cos(ang), sin = Math.sin(ang);
-      const x1 = cos * r * 0.95, y1 = sin * r * 0.95;
-      const x2 = cos * r * 1.6,  y2 = sin * r * 1.6;
-      const g   = this.add.graphics();
-      g.lineStyle(3, c.stub, 1);
-      g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.strokePath();
-      g.fillStyle(c.stub, 1);
-      g.fillCircle(x2, y2, 4);
-      ctr.add(g);
+  // ── DRAG ──────────────────────────────────────────────────────────────────
+  onDown(n,ptr){
+    this.dragging={node:n};
+    this.onMove(ptr); // draw initial rubber-band
+  }
+
+  onMove(ptr){
+    if(!this.dragging||!this.rubberGfx)return;
+    const{node:from}=this.dragging;
+    const tx=ptr.worldX, ty=ptr.worldY;
+    const dx=tx-from.x, dy=ty-from.y;
+    const len=Math.sqrt(dx*dx+dy*dy);
+
+    this.rubberGfx.clear();
+    if(len<4)return;
+
+    const ux=dx/len, uy=dy/len;
+    const x1=from.x+ux*(this.radius+2), y1=from.y+uy*(this.radius+2);
+
+    this.rubberGfx.lineStyle(2.5,0x38bdf8,0.55);
+    this.rubberGfx.beginPath();
+    this.rubberGfx.moveTo(x1,y1);
+    this.rubberGfx.lineTo(tx,ty);
+    this.rubberGfx.strokePath();
+
+    // Arrowhead at tip
+    if(len>24){
+      const ax=tx-ux*10-uy*6, ay=ty-uy*10+ux*6;
+      const bx=tx-ux*10+uy*6, by=ty-uy*10-ux*6;
+      this.rubberGfx.fillStyle(0x38bdf8,0.55);
+      this.rubberGfx.fillTriangle(tx,ty,ax,ay,bx,by);
     }
   }
 
-  redrawEdges() {
-    if (!this.edgeGfx) return;
-    this.edgeGfx.clear();
-    this.edges = [];
+  onUp(ptr){
+    if(this.rubberGfx) this.rubberGfx.clear();
+    if(!this.dragging)return;
+    const from=this.dragging.node;
+    this.dragging=null;
+    if(this.solved||this.animating)return;
 
-    const byId = this.getByIdMap();
-    const adj  = this.computeAdj(this.nodes, byId);
-    const seen = new Set();
+    // Find target node near pointer
+    const r=this.radius;
+    const to=this.nodes.find(n=>{
+      if(n.id===from.id)return false;
+      const dx=n.x-ptr.worldX, dy=n.y-ptr.worldY;
+      return dx*dx+dy*dy<(r*1.5)*(r*1.5);
+    });
+    if(!to)return;
 
-    for (const a of this.nodes) {
-      for (const bId of (adj.get(a.id) || [])) {
-        const key = [a.id, bId].sort().join('|');
-        if (seen.has(key)) continue;
-        seen.add(key);
-        const b = byId[bId];
-        this.edges.push({aId: a.id, bId, x1: a.x, y1: a.y, x2: b.x, y2: b.y});
-        this.edgeGfx.lineStyle(2.5, 0x334155, 0.9);
-        this.edgeGfx.beginPath();
-        this.edgeGfx.moveTo(a.x, a.y);
-        this.edgeGfx.lineTo(b.x, b.y);
-        this.edgeGfx.strokePath();
-      }
+    // Must be grid-adjacent
+    if(Math.abs(from.col-to.col)+Math.abs(from.row-to.row)!==1)return;
+
+    // Toggle: same-direction remove, reverse → flip, new → add
+    const fwd=this.conns.findIndex(c=>c.fromId===from.id&&c.toId===to.id);
+    const rev=this.conns.findIndex(c=>c.fromId===to.id&&c.toId===from.id);
+    if(fwd>=0){
+      this.conns.splice(fwd,1);           // remove
+    } else if(rev>=0){
+      this.conns[rev]={fromId:from.id,toId:to.id}; // flip direction
+    } else {
+      this.conns.push({fromId:from.id,toId:to.id}); // add
     }
-  }
 
-  // ── ROTATION ───────────────────────────────────────────────────────────────
-  rotateNode(n) {
-    this.animating = true;
-    this.moves++;
+    this.refreshSignal();
     this.updatePanel();
-
-    const newRot = (n.rot + 1) % 4;
-    const ctr    = this.nodeCtrs[n.id];
-    this.tweens.add({
-      targets: ctr,
-      rotation: newRot * Math.PI / 2,
-      duration: 160,
-      ease: 'Cubic.Out',
-      onComplete: () => {
-        n.rot = newRot;
-        ctr.rotation = newRot * Math.PI / 2;
-        this.animating = false;
-        this.redrawEdges();
-        this.checkWin();
-      }
-    });
+    if(!this.solved)this.checkWin();
   }
 
-  // ── WIN ────────────────────────────────────────────────────────────────────
-  checkWin() {
-    const byId = this.getByIdMap();
-    const adj  = this.computeAdj(this.nodes, byId);
-    if (this.checkGoals(adj, this.startId, this.goalIds, byId)) {
-      this.solved = true;
-      this.pulseSignal(adj, byId);
+  // ── SIGNAL ────────────────────────────────────────────────────────────────
+  propagate(){
+    const fired=new Set([this.startId]);
+    const suppressed=new Set();
+    let changed=true, iters=0;
+    while(changed&&iters++<200){
+      changed=false;
+      // Inhibitory outputs → suppress targets
+      for(const{fromId,toId}of this.conns){
+        const src=this.byId[fromId];
+        if(src&&src.type==='inhib'&&fired.has(fromId)&&!suppressed.has(toId)){
+          suppressed.add(toId); changed=true;
+        }
+      }
+      // Excitatory: fire if threshold met and not suppressed
+      for(const n of this.nodes){
+        if(n.type==='start'||fired.has(n.id)||suppressed.has(n.id))continue;
+        const excIn=this.conns.filter(c=>
+          c.toId===n.id&&fired.has(c.fromId)&&this.byId[c.fromId]?.type!=='inhib'
+        ).length;
+        if(excIn>=n.threshold){fired.add(n.id);changed=true;}
+      }
+    }
+    return{fired,suppressed};
+  }
+
+  refreshSignal(){
+    const{fired,suppressed}=this.propagate();
+    for(const n of this.nodes){
+      const ctr=this.nodeCtrs[n.id]; if(!ctr)continue;
+      const c=COL[n.type];
+      if(suppressed.has(n.id)){
+        ctr._body.setFillStyle(c.supp);
+        ctr._glow.setFillStyle(c.supp,0.12);
+      } else if(fired.has(n.id)){
+        ctr._body.setFillStyle(c.fired);
+        ctr._glow.setFillStyle(c.fired,0.38);
+      } else {
+        ctr._body.setFillStyle(c.body);
+        ctr._glow.setFillStyle(c.ring,0.18);
+      }
+    }
+    this.redrawConns(fired,suppressed);
+  }
+
+  redrawConns(fired,suppressed){
+    if(!this.connGfx)return;
+    this.connGfx.clear();
+    for(const{fromId,toId}of this.conns){
+      const a=this.byId[fromId], b=this.byId[toId]; if(!a||!b)continue;
+      const isInhib=(a.type==='inhib');
+      const active=fired.has(fromId)&&fired.has(toId)&&!suppressed.has(toId);
+      const blocked=fired.has(fromId)&&suppressed.has(toId);
+      const color=active?(isInhib?0xf87171:0x4ade80):blocked?0xef4444:0x334155;
+      const alpha=active||blocked?1.0:0.65;
+      const lw=active?3.5:2.5;
+
+      const dx=b.x-a.x, dy=b.y-a.y, len=Math.sqrt(dx*dx+dy*dy);
+      if(len<1)continue;
+      const ux=dx/len, uy=dy/len;
+      const r=this.radius;
+      const x1=a.x+ux*(r+3), y1=a.y+uy*(r+3);
+      const x2=b.x-ux*(r+3), y2=b.y-uy*(r+3);
+
+      this.connGfx.lineStyle(lw,color,alpha);
+      this.connGfx.beginPath();
+      this.connGfx.moveTo(x1,y1);
+      this.connGfx.lineTo(x2,y2);
+      this.connGfx.strokePath();
+
+      // Arrowhead 60% along the line
+      const mx=x1+(x2-x1)*0.62, my=y1+(y2-y1)*0.62;
+      const aw=active?9:7, ah=active?7:5;
+      this.connGfx.fillStyle(color,alpha);
+      this.connGfx.fillTriangle(
+        mx+ux*aw,   my+uy*aw,
+        mx-ux*aw-uy*ah, my-uy*aw+ux*ah,
+        mx-ux*aw+uy*ah, my-uy*aw-ux*ah
+      );
     }
   }
 
-  pulseSignal(adj, byId) {
-    // BFS distance from start
-    const dist  = {[this.startId]: 0};
-    const order = [this.startId];
-    const queue = [this.startId];
-    while (queue.length) {
-      const cur = queue.shift();
-      for (const nb of (adj.get(cur) || [])) {
-        if (dist[nb] !== undefined) continue;
-        if (byId[nb].type === 'inhib') continue;
-        dist[nb] = dist[cur] + 1;
-        order.push(nb);
-        queue.push(nb);
-      }
-    }
-
-    // Activate nodes with staggered delay
-    let maxDelay = 0;
-    order.forEach(id => {
-      const delay = dist[id] * 110;
-      maxDelay = Math.max(maxDelay, delay);
-      this.time.delayedCall(delay, () => this.activateNode(byId[id]));
-    });
-
-    // Repaint edges gold
-    this.time.delayedCall(50, () => {
-      if (!this.edgeGfx) return;
-      const edgeDist = {};
-      for (const e of this.edges) {
-        const da = dist[e.aId], db = dist[e.bId];
-        if (da !== undefined && db !== undefined) edgeDist[`${e.aId}|${e.bId}`] = Math.min(da, db);
-      }
-      const sorted = this.edges.filter(e => edgeDist[`${e.aId}|${e.bId}`] !== undefined)
-        .sort((a, b) => edgeDist[`${a.aId}|${a.bId}`] - edgeDist[`${b.aId}|${b.bId}`]);
-      sorted.forEach(e => {
-        const d = edgeDist[`${e.aId}|${e.bId}`] || 0;
-        this.time.delayedCall(d * 110, () => {
-          if (this.edgeGfx) {
-            this.edgeGfx.lineStyle(4, 0x4ade80, 1);
-            this.edgeGfx.beginPath();
-            this.edgeGfx.moveTo(e.x1, e.y1); this.edgeGfx.lineTo(e.x2, e.y2);
-            this.edgeGfx.strokePath();
-          }
+  // ── WIN ───────────────────────────────────────────────────────────────────
+  checkWin(){
+    const{fired}=this.propagate();
+    if(this.goalIds.every(g=>fired.has(g))){
+      this.solved=true;
+      this.animating=true;
+      const firedArr=[...fired];
+      firedArr.forEach((id,i)=>{
+        this.time.delayedCall(i*70,()=>{
+          const ctr=this.nodeCtrs[id]; if(!ctr)return;
+          this.tweens.add({targets:ctr,scaleX:1.28,scaleY:1.28,duration:110,yoyo:true,ease:'Sine.InOut'});
         });
       });
-    });
-
-    this.time.delayedCall(maxDelay + 350, () => {
-      this.btnNext.setVisible(this.lvlIdx < LEVELS.length - 1);
-      this.showSolvedText();
-    });
+      this.time.delayedCall(firedArr.length*70+280,()=>{
+        this.animating=false;
+        this.btnNext.setVisible(this.lvl<LEVELS.length-1);
+        this.showSolvedMsg();
+      });
+    }
   }
 
-  activateNode(n) {
-    const ctr = this.nodeCtrs[n.id];
-    if (!ctr) return;
-    ctr._body.setFillStyle(COL[n.type].active);
-    ctr._glow.setFillStyle(COL[n.type].active, 0.45);
-    this.tweens.add({targets: ctr, scaleX: 1.22, scaleY: 1.22, duration: 110, yoyo: true, ease: 'Sine.InOut'});
-  }
-
-  showSolvedText() {
-    const flash = this.add.rectangle(W / 2, H / 2, W, H, 0x4ade80, 0).setDepth(10);
-    this.tweens.add({targets: flash, alpha: 0.15, duration: 200, yoyo: true, onComplete: () => flash.destroy()});
-
-    const txt = this.add.text(W / 2, H / 2 + 20, '⚡ SIGNAL PROPAGATED! ⚡', {
-      fontSize: '26px', fontFamily: 'Arial', color: '#4ade80',
-      fontStyle: 'bold', stroke: '#000000', strokeThickness: 4
+  showSolvedMsg(){
+    const fl=this.add.rectangle(W/2,H/2,W,H,0x4ade80,0).setDepth(10);
+    this.tweens.add({targets:fl,alpha:0.12,duration:200,yoyo:true,onComplete:()=>fl.destroy()});
+    const tx=this.add.text(W/2,H/2+20,'⚡ SIGNAL PROPAGATED! ⚡',{
+      fontSize:'26px',fontFamily:'Arial',color:'#4ade80',fontStyle:'bold',stroke:'#000',strokeThickness:4
     }).setOrigin(0.5).setDepth(11).setAlpha(0);
-    this.tweens.add({
-      targets: txt, alpha: 1, y: H / 2 - 20, duration: 450, ease: 'Back.Out',
-      onComplete: () => {
-        this.time.delayedCall(1400, () => {
-          this.tweens.add({targets: txt, alpha: 0, duration: 350, onComplete: () => txt.destroy()});
-        });
-      }
-    });
+    this.tweens.add({targets:tx,alpha:1,y:H/2-20,duration:450,ease:'Back.Out',onComplete:()=>{
+      this.time.delayedCall(1400,()=>this.tweens.add({targets:tx,alpha:0,duration:350,onComplete:()=>tx.destroy()}));
+    }});
   }
 
-  // ── HINT ───────────────────────────────────────────────────────────────────
-  showHint() {
-    this.hintRings.forEach(r => r.destroy());
-    this.hintRings = [];
-
-    for (const n of this.nodes) {
-      if (n.type === 'inhib' || n.branches.length === 0) continue;
-      if (n.rot !== n.solRot) {
-        const ring = this.add.circle(n.x, n.y, this.radius * 1.75, 0x000000, 0).setDepth(3);
-        ring.setStrokeStyle(3, 0xfde68a, 1);
-        this.tweens.add({
-          targets: ring, alpha: {from: 0, to: 1}, duration: 300, yoyo: true, repeat: 3,
-          onComplete: () => { ring.destroy(); this.hintRings = this.hintRings.filter(r => r !== ring); }
-        });
-        this.hintRings.push(ring);
-      }
-    }
+  nextLevel(){
+    if(this.lvl+1>=LEVELS.length){this.showCredits();return;}
+    this.buildLevel(this.lvl+1);
   }
 
-  // ── NAVIGATION ─────────────────────────────────────────────────────────────
-  nextLevel() {
-    const next = this.lvlIdx + 1;
-    if (next >= LEVELS.length) {
-      this.showCredits();
-    } else {
-      this.buildLevel(next);
-    }
-  }
-
-  showCredits() {
-    const ov  = this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.88).setDepth(20);
-    const t1  = this.add.text(W / 2, H / 2 - 70, 'All Pathways Complete!', {
-      fontSize: '26px', fontFamily: 'Arial', color: '#4ade80', fontStyle: 'bold'
-    }).setOrigin(0.5).setDepth(21);
-    const t2  = this.add.text(W / 2, H / 2 - 22, 'The action potential has reached every target.\nYour nervous system is fully connected.', {
-      fontSize: '14px', fontFamily: 'Arial', color: '#94a3b8', align: 'center', lineSpacing: 6
-    }).setOrigin(0.5).setDepth(21);
-    const btn = this.add.rectangle(W / 2, H / 2 + 55, 180, 36, 0x1d4ed8).setOrigin(0.5).setDepth(21).setInteractive({cursor: 'pointer'});
-    this.add.text(W / 2, H / 2 + 55, 'Play Again', {fontSize: '13px', fontFamily: 'Arial', color: '#e2e8f0'}).setOrigin(0.5).setDepth(22);
-    btn.on('pointerdown', () => {
-      [ov, t1, t2, btn].forEach(x => x.destroy());
-      this.buildLevel(0);
-    });
+  showCredits(){
+    const ov=this.add.rectangle(W/2,H/2,W,H,0x000000,0.88).setDepth(20);
+    this.add.text(W/2,H/2-70,'All Pathways Complete!',{fontSize:'26px',fontFamily:'Arial',color:'#4ade80',fontStyle:'bold'}).setOrigin(0.5).setDepth(21);
+    this.add.text(W/2,H/2-22,'The action potential has reached every target.\nYour nervous system is fully connected.',{fontSize:'14px',fontFamily:'Arial',color:'#94a3b8',align:'center',lineSpacing:6}).setOrigin(0.5).setDepth(21);
+    const btn=this.add.rectangle(W/2,H/2+55,180,36,0x1d4ed8).setOrigin(0.5).setDepth(21).setInteractive({cursor:'pointer'});
+    this.add.text(W/2,H/2+55,'Play Again',{fontSize:'13px',fontFamily:'Arial',color:'#e2e8f0'}).setOrigin(0.5).setDepth(22);
+    btn.on('pointerdown',()=>{ov.destroy();this.buildLevel(0);});
   }
 }
 
 new Phaser.Game({
-  type: Phaser.AUTO,
-  width: W,
-  height: H,
-  backgroundColor: '#0f172a',
-  parent: 'game-container',
-  scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
-  },
-  scene: [NeuroScene],
+  type:Phaser.AUTO, width:W, height:H, backgroundColor:'#0f172a',
+  parent:'game',
+  scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},
+  scene:[Scene],
 });
 </script>
 </body>
