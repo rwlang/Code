@@ -1,0 +1,425 @@
+/* ============================================================
+   Winnipeg Birds — Stylesheet
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --sky:       #1a3a5c;
+  --sky-light: #2c5f8a;
+  --gold:      #e8a020;
+  --gold-lt:   #f5c842;
+  --green:     #3a7d44;
+  --green-lt:  #52a85f;
+  --warm:      #f8f4ee;
+  --text:      #1e1e1e;
+  --muted:     #5a5a5a;
+  --card-bg:   #ffffff;
+  --radius:    12px;
+  --shadow:    0 4px 20px rgba(0,0,0,0.10);
+  --trans:     0.25s ease;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Georgia', serif;
+  color: var(--text);
+  background: var(--warm);
+  line-height: 1.7;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ── Hero ──────────────────────────────────────────────── */
+
+.hero {
+  position: relative;
+  background: linear-gradient(160deg, var(--sky) 0%, var(--sky-light) 60%, #1e5c4a 100%);
+  color: #fff;
+  padding: 100px 24px 80px;
+  overflow: hidden;
+  text-align: center;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Ccircle cx='50' cy='50' r='40' fill='none' stroke='rgba(255,255,255,0.03)' stroke-width='1'/%3E%3C/svg%3E") repeat;
+  pointer-events: none;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.hero-label {
+  font-size: 0.8rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold-lt);
+  margin-bottom: 16px;
+}
+
+.hero h1 {
+  font-size: clamp(2.8rem, 7vw, 5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 20px;
+}
+
+.hero-sub {
+  font-size: 1.15rem;
+  color: rgba(255,255,255,0.82);
+  max-width: 520px;
+  margin: 0 auto 36px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 14px 36px;
+  background: var(--gold);
+  color: #1a1a1a;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 40px;
+  transition: background var(--trans), transform var(--trans);
+}
+
+.btn:hover {
+  background: var(--gold-lt);
+  transform: translateY(-2px);
+}
+
+.hero-silhouettes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.sil {
+  position: absolute;
+  font-size: 3rem;
+  opacity: 0.12;
+  filter: grayscale(1) brightness(5);
+}
+
+.s1 { top: 15%; left:  8%; font-size: 4rem; }
+.s2 { top: 55%; left: 80%; font-size: 2.5rem; }
+.s3 { top: 70%; left: 12%; font-size: 3.5rem; }
+.s4 { top: 20%; right: 10%; font-size: 3rem; }
+
+/* ── Intro ─────────────────────────────────────────────── */
+
+.intro {
+  background: #fff;
+  padding: 72px 0;
+}
+
+.intro h2 {
+  font-size: 2rem;
+  color: var(--sky);
+  margin-bottom: 16px;
+}
+
+.intro p {
+  color: var(--muted);
+  max-width: 700px;
+  font-size: 1.05rem;
+}
+
+.stat-row {
+  display: flex;
+  gap: 40px;
+  margin-top: 40px;
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-num {
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: var(--green);
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.88rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* ── Birds Grid ────────────────────────────────────────── */
+
+.birds-section {
+  padding: 80px 0;
+}
+
+.birds-section h2 {
+  font-size: 2rem;
+  color: var(--sky);
+  margin-bottom: 8px;
+}
+
+.section-sub {
+  color: var(--muted);
+  margin-bottom: 40px;
+}
+
+.bird-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.bird-card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px;
+  display: flex;
+  gap: 20px;
+  transition: transform var(--trans), box-shadow var(--trans);
+  cursor: default;
+  border-left: 4px solid transparent;
+}
+
+.bird-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.14);
+  border-left-color: var(--gold);
+}
+
+.bird-icon {
+  font-size: 2.6rem;
+  flex-shrink: 0;
+  align-self: flex-start;
+  line-height: 1;
+}
+
+.bird-info h3 {
+  font-size: 1.1rem;
+  color: var(--sky);
+  margin-bottom: 2px;
+}
+
+.sci {
+  font-size: 0.82rem;
+  font-style: italic;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-family: system-ui, sans-serif;
+}
+
+.year-round { background: #e8f4ea; color: var(--green); }
+.spring     { background: #fff4d6; color: #a06000; }
+.winter     { background: #e0ecf8; color: #1a4070; }
+.provincial { background: #fde8f0; color: #8b1a4a; }
+
+.bird-info p {
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* ── Seasons ───────────────────────────────────────────── */
+
+.seasons {
+  background: var(--sky);
+  color: #fff;
+  padding: 80px 0;
+}
+
+.seasons h2 {
+  font-size: 2rem;
+  margin-bottom: 40px;
+  color: var(--gold-lt);
+}
+
+.season-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 24px;
+}
+
+.season {
+  padding: 28px 24px;
+  border-radius: var(--radius);
+  border-top: 4px solid;
+}
+
+.spring-s  { background: rgba(255,255,255,0.07); border-color: #82d44b; }
+.summer-s  { background: rgba(255,255,255,0.07); border-color: #f5c842; }
+.fall-s    { background: rgba(255,255,255,0.07); border-color: #e87830; }
+.winter-s  { background: rgba(255,255,255,0.07); border-color: #80c8f0; }
+
+.season h3 {
+  font-size: 1.25rem;
+  margin-bottom: 4px;
+}
+
+.months {
+  font-size: 0.8rem;
+  opacity: 0.65;
+  letter-spacing: 0.05em;
+  font-family: system-ui, sans-serif;
+  margin-bottom: 16px;
+}
+
+.season ul {
+  list-style: none;
+}
+
+.season li {
+  font-size: 0.9rem;
+  opacity: 0.88;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  line-height: 1.4;
+}
+
+.season li:last-child {
+  border-bottom: none;
+}
+
+/* ── Hotspots ──────────────────────────────────────────── */
+
+.hotspots {
+  padding: 80px 0;
+  background: #fff;
+}
+
+.hotspots h2 {
+  font-size: 2rem;
+  color: var(--sky);
+  margin-bottom: 40px;
+}
+
+.hotspot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.hotspot {
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+  padding: 32px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.hotspot:first-child {
+  border-top: 1px solid #eee;
+}
+
+.hotspot-num {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--gold);
+  min-width: 60px;
+  line-height: 1;
+  padding-top: 4px;
+  font-family: system-ui, sans-serif;
+}
+
+.hotspot-text h3 {
+  font-size: 1.2rem;
+  color: var(--sky);
+  margin-bottom: 8px;
+}
+
+.hotspot-text p {
+  color: var(--muted);
+  font-size: 0.95rem;
+  max-width: 680px;
+}
+
+/* ── Footer ────────────────────────────────────────────── */
+
+.footer {
+  background: #111;
+  color: rgba(255,255,255,0.6);
+  text-align: center;
+  padding: 48px 24px;
+  font-size: 0.9rem;
+}
+
+.footer-logo {
+  font-size: 1.4rem;
+  color: #fff;
+  margin-bottom: 12px;
+}
+
+.footer p {
+  margin-bottom: 12px;
+}
+
+.footer-links a {
+  color: var(--gold-lt);
+  text-decoration: none;
+}
+
+.footer-links a:hover {
+  text-decoration: underline;
+}
+
+/* ── Responsive ────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .bird-card {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .hotspot {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .hotspot-num {
+    font-size: 1.4rem;
+  }
+
+  .stat-row {
+    gap: 24px;
+  }
+}
