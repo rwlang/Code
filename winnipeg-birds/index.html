@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Winnipeg Birds — A Field Guide</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="hero-content">
+      <p class="hero-label">Manitoba, Canada</p>
+      <h1>Winnipeg Birds</h1>
+      <p class="hero-sub">A guide to the birds of the Prairies' gateway city — from boreal forests to urban backyards.</p>
+      <a href="#birds" class="btn">Explore the Birds</a>
+    </div>
+    <div class="hero-silhouettes" aria-hidden="true">
+      <span class="sil s1">🦅</span>
+      <span class="sil s2">🐦</span>
+      <span class="sil s3">🦢</span>
+      <span class="sil s4">🦉</span>
+    </div>
+  </header>
+
+  <!-- Intro -->
+  <section class="intro">
+    <div class="container">
+      <h2>Where the Prairies Meet the Boreal</h2>
+      <p>Winnipeg sits at a remarkable ecological crossroads — where the vast Canadian Prairies give way to the boreal forest and the vast wetlands of the Assiniboine and Red River systems. This diversity of habitats makes the city a hotspot for birds year-round, with over <strong>300 species</strong> recorded in and around the city.</p>
+      <div class="stat-row">
+        <div class="stat">
+          <span class="stat-num">300+</span>
+          <span class="stat-label">Species recorded</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num">4</span>
+          <span class="stat-label">Distinct seasons</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num">1</span>
+          <span class="stat-label">Provincial bird (Black-capped Chickadee)</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bird Cards -->
+  <section class="birds-section" id="birds">
+    <div class="container">
+      <h2>Common Winnipeg Birds</h2>
+      <p class="section-sub">Tap a card to learn more about each species.</p>
+      <div class="bird-grid">
+
+        <article class="bird-card" data-id="chickadee">
+          <div class="bird-icon">🐦</div>
+          <div class="bird-info">
+            <h3>Black-capped Chickadee</h3>
+            <p class="sci">Poecile atricapillus</p>
+            <div class="tags">
+              <span class="tag year-round">Year-round</span>
+              <span class="tag provincial">Provincial Bird</span>
+            </div>
+            <p>Manitoba's provincial bird, the chickadee is a fearless year-round resident. It frequently visits feeders and can be hand-fed in parks like Assiniboine Park. Its classic <em>chick-a-dee-dee-dee</em> call is among the most recognized sounds in the city.</p>
+          </div>
+        </article>
+
+        <article class="bird-card" data-id="robin">
+          <div class="bird-icon">🐦</div>
+          <div class="bird-info">
+            <h3>American Robin</h3>
+            <p class="sci">Turdus migratorius</p>
+            <div class="tags">
+              <span class="tag spring">Spring–Fall</span>
+            </div>
+            <p>The herald of spring in Winnipeg, robins arrive in late March and quickly populate parks, lawns, and gardens. The sight of a robin tugging a worm from the thawing ground is one of the city's most beloved seasonal sights.</p>
+          </div>
+        </article>
+
+        <article class="bird-card" data-id="heron">
+          <div class="bird-icon">🦢</div>
+          <div class="bird-info">
+            <h3>Great Blue Heron</h3>
+            <p class="sci">Ardea herodias</p>
+            <div class="tags">
+              <span class="tag spring">Spring–Fall</span>
+            </div>
+            <p>Standing nearly 4 feet tall, Great Blue Herons hunt motionlessly along the Red and Assiniboine rivers. A large breeding colony — or heronry — exists at Oak Hammock Marsh, one of the best birding spots in Manitoba.</p>
+          </div>
+        </article>
+
+        <article class="bird-card" data-id="goose">
+          <div class="bird-icon">🦢</div>
+          <div class="bird-info">
+            <h3>Canada Goose</h3>
+            <p class="sci">Branta canadensis</p>
+            <div class="tags">
+              <span class="tag year-round">Year-round</span>
+            </div>
+            <p>A bold and ubiquitous presence in Winnipeg's parks, the Canada Goose nests along riverbanks and at city ponds. Once a seasonal migrant, many now overwinter, foraging on park lawns through mild spells.</p>
+          </div>
+        </article>
+
+        <article class="bird-card" data-id="oriole">
+          <div class="bird-icon">🐦</div>
+          <div class="bird-info">
+            <h3>Baltimore Oriole</h3>
+            <p class="sci">Icterus galbula</p>
+            <div class="tags">
+              <span class="tag spring">Spring–Summer</span>
+            </div>
+            <p>With its brilliant orange-and-black plumage, the Baltimore Oriole is one of Winnipeg's most striking summer visitors. They weave remarkable hanging nests from elm trees and are attracted to orange halves and grape jelly feeders.</p>
+          </div>
+        </article>
+
+        <article class="bird-card" data-id="hawk">
+          <div class="bird-icon">🦅</div>
+          <div class="bird-info">
+            <h3>Red-tailed Hawk</h3>
+            <p class="sci">Buteo jamaicensis</p>
+            <div class="tags">
+              <span class="tag year-round">Year-round</span>
+            </div>
+            <p>Perched on hydro poles along Winnipeg's ring roads and field edges, the Red-tailed Hawk is the city's most commonly spotted raptor. Its distinctive rust-red tail catches the light beautifully in flight.</p>
+          </div>
+        </article>
+
+        <article class="bird-card" data-id="owl">
+          <div class="bird-icon">🦉</div>
+          <div class="bird-info">
+            <h3>Great Horned Owl</h3>
+            <p class="sci">Bubo virginianus</p>
+            <div class="tags">
+              <span class="tag year-round">Year-round</span>
+            </div>
+            <p>Winnipeg's apex nocturnal predator. Great Horned Owls nest in mature trees across the city, including in Assiniboine Park and St. Vital Park. They begin nesting in February — the earliest of any bird in the city.</p>
+          </div>
+        </article>
+
+        <article class="bird-card" data-id="waxwing">
+          <div class="bird-icon">🐦</div>
+          <div class="bird-info">
+            <h3>Bohemian Waxwing</h3>
+            <p class="sci">Bombycilla garrulus</p>
+            <div class="tags">
+              <span class="tag winter">Winter</span>
+            </div>
+            <p>Bohemian Waxwings descend on Winnipeg in massive winter flocks to strip mountain ash and crabapple trees bare. Their high-pitched trilling fills suburban streets during cold snaps, offering vivid colour in an otherwise grey season.</p>
+          </div>
+        </article>
+
+        <article class="bird-card" data-id="warbler">
+          <div class="bird-icon">🐦</div>
+          <div class="bird-info">
+            <h3>Yellow Warbler</h3>
+            <p class="sci">Setophaga petechia</p>
+            <div class="tags">
+              <span class="tag spring">Spring–Summer</span>
+            </div>
+            <p>A brilliant burst of yellow in Winnipeg's riverside shrubs and parks. The Yellow Warbler's song — <em>sweet-sweet-sweet, I'm-so-sweet</em> — rings out from early May through July, and they're one of the easiest warblers to spot for beginners.</p>
+          </div>
+        </article>
+
+        <article class="bird-card" data-id="snowy">
+          <div class="bird-icon">🦉</div>
+          <div class="bird-info">
+            <h3>Snowy Owl</h3>
+            <p class="sci">Bubo scandiacus</p>
+            <div class="tags">
+              <span class="tag winter">Winter</span>
+            </div>
+            <p>An iconic winter visitor from the Arctic tundra. Snowy Owls irrupt into Winnipeg in varying numbers depending on lemming cycles in the north. They perch on rooftops, fence posts, and airport perimeters, drawing crowds of birders from across North America.</p>
+          </div>
+        </article>
+
+        <article class="bird-card" data-id="martin">
+          <div class="bird-icon">🐦</div>
+          <div class="bird-info">
+            <h3>Purple Martin</h3>
+            <p class="sci">Progne subis</p>
+            <div class="tags">
+              <span class="tag spring">Spring–Summer</span>
+            </div>
+            <p>North America's largest swallow nests almost entirely in human-provided martin houses in the east. Winnipeg residents who put up colony gourds are rewarded with these acrobatic, insect-hunting birds from May through August.</p>
+          </div>
+        </article>
+
+        <article class="bird-card" data-id="pelican">
+          <div class="bird-icon">🦢</div>
+          <div class="bird-info">
+            <h3>American White Pelican</h3>
+            <p class="sci">Pelecanus erythrorhynchos</p>
+            <div class="tags">
+              <span class="tag spring">Spring–Fall</span>
+            </div>
+            <p>With a wingspan of nearly 9 feet, the American White Pelican is one of the most awe-inspiring birds to visit Winnipeg. Large flocks rest on the Red River and forage on Lake Winnipeg, which hosts one of the world's largest breeding colonies at Limestone Bay.</p>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Seasonal Guide -->
+  <section class="seasons" id="seasons">
+    <div class="container">
+      <h2>Birding by Season</h2>
+      <div class="season-grid">
+        <div class="season spring-s">
+          <h3>Spring</h3>
+          <p class="months">March – May</p>
+          <ul>
+            <li>American Robin returns (late March)</li>
+            <li>Warbler migration peaks in May</li>
+            <li>Baltimore Orioles arrive early May</li>
+            <li>Shorebirds at Oak Hammock Marsh</li>
+          </ul>
+        </div>
+        <div class="season summer-s">
+          <h3>Summer</h3>
+          <p class="months">June – August</p>
+          <ul>
+            <li>Breeding songbirds in city parks</li>
+            <li>Purple Martins active at colonies</li>
+            <li>Great Blue Heron chicks fledge</li>
+            <li>Nighthawks hunting at dusk</li>
+          </ul>
+        </div>
+        <div class="season fall-s">
+          <h3>Fall</h3>
+          <p class="months">September – November</p>
+          <ul>
+            <li>Raptor migration along river valleys</li>
+            <li>Waterfowl staging on Red River</li>
+            <li>Sandhill Cranes passing through</li>
+            <li>White-throated Sparrow influx</li>
+          </ul>
+        </div>
+        <div class="season winter-s">
+          <h3>Winter</h3>
+          <p class="months">December – February</p>
+          <ul>
+            <li>Bohemian Waxwing flocks</li>
+            <li>Snowy Owl irruptions</li>
+            <li>Common Redpoll at feeders</li>
+            <li>Great Horned Owl nesting begins</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Hotspots -->
+  <section class="hotspots" id="hotspots">
+    <div class="container">
+      <h2>Top Birding Hotspots</h2>
+      <div class="hotspot-list">
+        <div class="hotspot">
+          <div class="hotspot-num">01</div>
+          <div class="hotspot-text">
+            <h3>Oak Hammock Marsh</h3>
+            <p>Manitoba's premier birding destination, 30 minutes north of the city. A wetland reserve attracting thousands of waterfowl during migration, with a world-class interpretive centre.</p>
+          </div>
+        </div>
+        <div class="hotspot">
+          <div class="hotspot-num">02</div>
+          <div class="hotspot-text">
+            <h3>Assiniboine Park & Forest</h3>
+            <p>An urban forest within the city with mature elms and diverse understory — excellent for migrant warblers, owls, and year-round residents like chickadees and nuthatches.</p>
+          </div>
+        </div>
+        <div class="hotspot">
+          <div class="hotspot-num">03</div>
+          <div class="hotspot-text">
+            <h3>The Forks / Red River Walk</h3>
+            <p>The confluence of the Red and Assiniboine rivers draws herons, pelicans, mergansers, and gulls. The riverwalk offers accessible birding right in the heart of downtown.</p>
+          </div>
+        </div>
+        <div class="hotspot">
+          <div class="hotspot-num">04</div>
+          <div class="hotspot-text">
+            <h3>Winnipeg Sewage Lagoons (Brady Road)</h3>
+            <p>One of the best-kept secrets in Manitoba birding. The lagoons attract rare gulls, shorebirds, and waterfowl — including species rarely seen elsewhere in the province.</p>
+          </div>
+        </div>
+        <div class="hotspot">
+          <div class="hotspot-num">05</div>
+          <div class="hotspot-text">
+            <h3>Beaudry Provincial Park</h3>
+            <p>A riparian habitat gem just west of the city along the Assiniboine River. Excellent for flycatchers, vireos, and woodland migrants during spring and fall.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p class="footer-logo">🐦 Winnipeg Birds</p>
+      <p>Built with love for Manitoba's avian residents and visitors.</p>
+      <p class="footer-links">
+        <a href="https://www.naturemanitoba.ca" target="_blank" rel="noopener">Nature Manitoba</a> &middot;
+        <a href="https://ebird.org/region/CA-MB-WP" target="_blank" rel="noopener">eBird Winnipeg</a> &middot;
+        <a href="https://www.ducks.ca/places/oak-hammock-marsh" target="_blank" rel="noopener">Oak Hammock Marsh</a>
+      </p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
